@@ -48,7 +48,7 @@ pub struct TimeTrackerData {
 }
 
 fn default_version() -> String {
-    "0.2.0".to_string()
+    env!("CARGO_PKG_VERSION").to_string()
 }
 
 impl Default for TimeTrackerData {
@@ -56,7 +56,7 @@ impl Default for TimeTrackerData {
         Self {
             activities: Vec::new(),
             last_updated: Utc::now(),
-            version: "0.2.0".to_string(),
+            version: env!("CARGO_PKG_VERSION").to_string(),
         }
     }
 }
@@ -107,7 +107,7 @@ impl TimeTracker {
                                 self.data = TimeTrackerData {
                                     activities,
                                     last_updated: Utc::now(),
-                                    version: "0.2.0".to_string(),
+                                    version: env!("CARGO_PKG_VERSION").to_string(),
                                 };
                                 // 立即保存为新格式
                                 self.save_data()?;

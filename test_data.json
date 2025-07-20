@@ -127,8 +127,80 @@
       "end_time": "2025-07-20T21:58:45.529349Z",
       "duration_seconds": 10,
       "process_id": 0
+    },
+    {
+      "app_name": "Trae",
+      "window_title": "Unknown Window",
+      "start_time": "2025-07-20T21:58:45.529876Z",
+      "end_time": "2025-07-20T22:00:35.611621Z",
+      "duration_seconds": 110,
+      "process_id": 1100
+    },
+    {
+      "app_name": "Active Application",
+      "window_title": "Active Window",
+      "start_time": "2025-07-20T22:00:35.614262Z",
+      "end_time": "2025-07-20T22:00:55.688465Z",
+      "duration_seconds": 20,
+      "process_id": 0
+    },
+    {
+      "app_name": "Trae",
+      "window_title": "Unknown Window",
+      "start_time": "2025-07-20T22:00:55.690154Z",
+      "end_time": "2025-07-20T22:05:45.906251Z",
+      "duration_seconds": 290,
+      "process_id": 1100
+    },
+    {
+      "app_name": "Active Application",
+      "window_title": "Active Window",
+      "start_time": "2025-07-20T22:05:45.907883Z",
+      "end_time": "2025-07-20T22:06:46.002545Z",
+      "duration_seconds": 60,
+      "process_id": 0
+    },
+    {
+      "app_name": "Trae",
+      "window_title": "Unknown Window",
+      "start_time": "2025-07-20T22:06:46.002963Z",
+      "end_time": "2025-07-20T22:08:26.067275Z",
+      "duration_seconds": 100,
+      "process_id": 1100
+    },
+    {
+      "app_name": "Active Application",
+      "window_title": "Active Window",
+      "start_time": "2025-07-20T22:08:26.068329Z",
+      "end_time": "2025-07-20T22:08:46.086789Z",
+      "duration_seconds": 20,
+      "process_id": 0
+    },
+    {
+      "app_name": "Trae",
+      "window_title": "Unknown Window",
+      "start_time": "2025-07-20T22:08:46.087270Z",
+      "end_time": "2025-07-20T22:09:06.149380Z",
+      "duration_seconds": 20,
+      "process_id": 1100
+    },
+    {
+      "app_name": "Active Application",
+      "window_title": "Active Window",
+      "start_time": "2025-07-20T22:09:06.149990Z",
+      "end_time": "2025-07-20T22:13:37.257668Z",
+      "duration_seconds": 271,
+      "process_id": 0
+    },
+    {
+      "app_name": "Trae",
+      "window_title": "Unknown Window",
+      "start_time": "2025-07-20T22:13:37.259749Z",
+      "end_time": "2025-07-20T22:14:37.390510Z",
+      "duration_seconds": 60,
+      "process_id": 1100
     }
   ],
-  "last_updated": "2025-07-20T21:58:45.529363Z",
+  "last_updated": "2025-07-20T22:14:37.390746Z",
   "version": "0.2.0"
 }

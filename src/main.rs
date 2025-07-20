@@ -25,7 +25,7 @@ async fn main() -> Result<()> {
     env_logger::init();
 
     let matches = Command::new("timetracker")
-        .version("0.2.0")
+        .version(env!("CARGO_PKG_VERSION"))
         .author("TimeTracker Team")
         .about("智能时间追踪工具 - 监控应用程序使用情况")
         .subcommand(
@@ -469,7 +469,7 @@ async fn main() -> Result<()> {
             handle_ai_command(sub_matches).await?;
         }
         _ => {
-            println!("TimeTracker v0.2.0 - 智能时间追踪工具");
+            println!("TimeTracker v{} - 智能时间追踪工具", env!("CARGO_PKG_VERSION"));
             println!();
             println!("使用方法:");
             println!("  timetracker start [选项]     - 开始时间追踪");
@@ -512,10 +512,10 @@ fn start_daemon_tracking(interval: u64, data_file: String) -> Result<()> {
     let mut loop_count = 0;
     let mut last_app = String::new();
     let mut last_window = String::new();
-    
+
     loop {
         loop_count += 1;
-        
+
         // 每60次循环记录一次心跳日志（约5分钟）
         if loop_count % 60 == 1 {
             let log_msg = format!(
@@ -545,7 +545,7 @@ fn start_daemon_tracking(interval: u64, data_file: String) -> Result<()> {
                         .append(true)
                         .open("/tmp/timetracker.log")
                         .and_then(|mut f| f.write_all(log_msg.as_bytes()));
-                    
+
                     last_app = window_info.app_name.clone();
                     last_window = window_info.window_title.clone();
                 }
