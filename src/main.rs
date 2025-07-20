@@ -51,7 +51,14 @@ async fn main() -> Result<()> {
                     Arg::new("daemon")
                         .short('d')
                         .long("daemon")
-                        .help("以守护进程模式运行")
+                        .help("以守护进程模式运行（默认）")
+                        .action(clap::ArgAction::SetTrue),
+                )
+                .arg(
+                    Arg::new("interactive")
+                        .short('I')
+                        .long("interactive")
+                        .help("以交互式模式运行")
                         .action(clap::ArgAction::SetTrue),
                 )
                 .arg(
@@ -255,13 +262,16 @@ async fn main() -> Result<()> {
             }
 
             let daemon_mode = sub_matches.get_flag("daemon");
+            let interactive_mode = sub_matches.get_flag("interactive");
             let daemon_child = sub_matches.get_flag("daemon-child");
 
-            if daemon_mode {
-                // 守护进程模式 - 启动子进程
-                let mut daemon_manager = DaemonManager::new();
-                daemon_manager.start_daemon(interval, &data_file)?;
-            } else if daemon_child {
+            // 检查冲突的参数
+            if daemon_mode && interactive_mode {
+                println!("❌ 错误：不能同时指定 --daemon 和 --interactive 参数");
+                return Ok(());
+            }
+
+            if daemon_child {
                 // 守护进程子进程模式 - 实际运行监控
                 use crate::daemon::setup_signal_handlers;
                 setup_signal_handlers()?;
@@ -309,14 +319,18 @@ async fn main() -> Result<()> {
 
                 // 启动监控（同步模式，不需要tokio）
                 start_daemon_tracking(interval, data_file)?;
-            } else {
+            } else if interactive_mode {
+                // 交互式模式
                 // 检查权限
                 if !auto_request_permissions()? {
                     return Ok(());
                 }
 
-                // 交互式模式
                 start_interactive_tracking(interval, data_file).await?;
+            } else {
+                // 默认守护进程模式 - 启动子进程
+                let mut daemon_manager = DaemonManager::new();
+                daemon_manager.start_daemon(interval, &data_file)?;
             }
         }
         Some(("stop", _)) => {
@@ -495,9 +509,47 @@ fn start_daemon_tracking(interval: u64, data_file: String) -> Result<()> {
         .and_then(|mut f| f.write_all(log_msg.as_bytes()));
 
     // 启动同步监控循环
+    let mut loop_count = 0;
+    let mut last_app = String::new();
+    let mut last_window = String::new();
+    
     loop {
+        loop_count += 1;
+        
+        // 每60次循环记录一次心跳日志（约5分钟）
+        if loop_count % 60 == 1 {
+            let log_msg = format!(
+                "[{}] 守护进程运行正常，已完成 {} 次检查\n",
+                chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
+                loop_count
+            );
+            let _ = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open("/tmp/timetracker.log")
+                .and_then(|mut f| f.write_all(log_msg.as_bytes()));
+        }
+
         match platform::get_active_window() {
             Ok(window_info) => {
+                // 只在应用或窗口发生变化时记录日志
+                if window_info.app_name != last_app || window_info.window_title != last_window {
+                    let log_msg = format!(
+                        "[{}] 活动窗口变化: {} - {}\n",
+                        chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
+                        window_info.app_name,
+                        window_info.window_title
+                    );
+                    let _ = std::fs::OpenOptions::new()
+                        .create(true)
+                        .append(true)
+                        .open("/tmp/timetracker.log")
+                        .and_then(|mut f| f.write_all(log_msg.as_bytes()));
+                    
+                    last_app = window_info.app_name.clone();
+                    last_window = window_info.window_title.clone();
+                }
+
                 if let Err(e) = tracker.update_activity(window_info) {
                     let log_msg = format!(
                         "[{}] 更新活动错误: {}\n",

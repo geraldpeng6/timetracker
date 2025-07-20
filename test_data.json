@@ -31,8 +31,40 @@
       "end_time": "2025-07-20T20:44:31.596227Z",
       "duration_seconds": 110,
       "process_id": 0
+    },
+    {
+      "app_name": "Trae",
+      "window_title": "Unknown Window",
+      "start_time": "2025-07-20T20:44:31.620044Z",
+      "end_time": "2025-07-20T21:36:13.836531Z",
+      "duration_seconds": 3102,
+      "process_id": 1100
+    },
+    {
+      "app_name": "Active Application",
+      "window_title": "Active Window",
+      "start_time": "2025-07-20T21:36:13.838951Z",
+      "end_time": "2025-07-20T21:36:24.105248Z",
+      "duration_seconds": 10,
+      "process_id": 0
+    },
+    {
+      "app_name": "Trae",
+      "window_title": "Unknown Window",
+      "start_time": "2025-07-20T21:36:24.107742Z",
+      "end_time": "2025-07-20T21:36:44.129085Z",
+      "duration_seconds": 20,
+      "process_id": 1100
+    },
+    {
+      "app_name": "Active Application",
+      "window_title": "Active Window",
+      "start_time": "2025-07-20T21:36:44.130686Z",
+      "end_time": "2025-07-20T21:37:04.166062Z",
+      "duration_seconds": 20,
+      "process_id": 0
     }
   ],
-  "last_updated": "2025-07-20T20:44:31.599243Z",
+  "last_updated": "2025-07-20T21:37:04.166509Z",
   "version": "0.2.0"
 }
