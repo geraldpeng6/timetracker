@@ -1,6 +1,6 @@
-use crate::tracker::{TimeTracker};
-use crate::ai_config::{AIConfig, AIProvider};
-use crate::ai_client::{UnifiedAIClient, AIRequest, AIMessage};
+use crate::ai_client::{AIMessage, AIRequest, UnifiedAIClient};
+use crate::ai_config::AIConfig;
+use crate::tracker::TimeTracker;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -68,15 +68,13 @@ impl AIAnalyzer {
         let config = AIConfig::load().unwrap_or_default();
         let client = UnifiedAIClient::new(config.clone())?;
 
-        Ok(Self {
-            config,
-            client,
-        })
+        Ok(Self { config, client })
     }
 
     pub fn is_configured(&self) -> bool {
         // 检查当前提供商是否已配置
-        self.config.is_provider_configured(&self.config.current_provider)
+        self.config
+            .is_provider_configured(&self.config.current_provider)
     }
 
     pub async fn analyze_usage(&self, tracker: &TimeTracker) -> Result<AIAnalysisResult> {
@@ -88,25 +86,23 @@ impl AIAnalyzer {
 
         // 准备分析数据
         let analysis_request = self.prepare_analysis_data(tracker)?;
-        
+
         // 调用 AI API
         let ai_response = self.call_ai_api(&analysis_request).await?;
-        
+
         // 解析响应
         let analysis_result = self.parse_ai_response(&ai_response, &analysis_request)?;
-        
+
         Ok(analysis_result)
     }
 
     fn prepare_analysis_data(&self, tracker: &TimeTracker) -> Result<AIAnalysisRequest> {
         let activities = tracker.get_activities();
         let sessions = tracker.get_activity_sessions();
-        
+
         // 计算时间范围
-        let time_range = if let (Some(first), Some(last)) = (
-            activities.first(),
-            activities.last()
-        ) {
+        let time_range = if let (Some(first), Some(last)) = (activities.first(), activities.last())
+        {
             TimeRange {
                 start: first.start_time,
                 end: last.end_time.unwrap_or(Utc::now()),
@@ -157,17 +153,131 @@ impl AIAnalyzer {
 
     fn categorize_app(&self, app_name: &str) -> Option<String> {
         let app_lower = app_name.to_lowercase();
-        
-        if app_lower.contains("code") || app_lower.contains("vim") || app_lower.contains("ide") {
+
+        // 开发工具
+        if app_lower.contains("code")
+            || app_lower.contains("vim")
+            || app_lower.contains("ide")
+            || app_lower.contains("xcode")
+            || app_lower.contains("android studio")
+            || app_lower.contains("intellij")
+            || app_lower.contains("pycharm")
+            || app_lower.contains("webstorm")
+            || app_lower.contains("sublime")
+            || app_lower.contains("atom")
+            || app_lower.contains("emacs")
+            || app_lower.contains("terminal")
+            || app_lower.contains("iterm")
+            || app_lower.contains("git")
+            || app_lower.contains("sourcetree")
+            || app_lower.contains("trae")
+            || app_lower.contains("electron")
+            || app_lower.contains("cursor")
+            || app_lower.contains("zed")
+            || app_lower.contains("nova")
+            || app_lower.contains("fleet")
+        {
             Some("开发工具".to_string())
-        } else if app_lower.contains("browser") || app_lower.contains("chrome") || app_lower.contains("firefox") || app_lower.contains("safari") {
+        }
+        // 浏览器
+        else if app_lower.contains("browser")
+            || app_lower.contains("chrome")
+            || app_lower.contains("firefox")
+            || app_lower.contains("safari")
+            || app_lower.contains("edge")
+            || app_lower.contains("opera")
+            || app_lower.contains("brave")
+            || app_lower.contains("arc")
+        {
             Some("浏览器".to_string())
-        } else if app_lower.contains("slack") || app_lower.contains("teams") || app_lower.contains("discord") {
+        }
+        // 沟通工具
+        else if app_lower.contains("slack")
+            || app_lower.contains("teams")
+            || app_lower.contains("discord")
+            || app_lower.contains("zoom")
+            || app_lower.contains("skype")
+            || app_lower.contains("telegram")
+            || app_lower.contains("whatsapp")
+            || app_lower.contains("wechat")
+            || app_lower.contains("qq")
+            || app_lower.contains("钉钉")
+            || app_lower.contains("feishu")
+            || app_lower.contains("lark")
+        {
             Some("沟通工具".to_string())
-        } else if app_lower.contains("word") || app_lower.contains("excel") || app_lower.contains("powerpoint") {
+        }
+        // 办公软件
+        else if app_lower.contains("word")
+            || app_lower.contains("excel")
+            || app_lower.contains("powerpoint")
+            || app_lower.contains("outlook")
+            || app_lower.contains("notion")
+            || app_lower.contains("obsidian")
+            || app_lower.contains("evernote")
+            || app_lower.contains("onenote")
+            || app_lower.contains("pages")
+            || app_lower.contains("numbers")
+            || app_lower.contains("keynote")
+            || app_lower.contains("google docs")
+            || app_lower.contains("sheets")
+            || app_lower.contains("slides")
+        {
             Some("办公软件".to_string())
-        } else if app_lower.contains("music") || app_lower.contains("video") || app_lower.contains("player") {
+        }
+        // 设计工具
+        else if app_lower.contains("photoshop")
+            || app_lower.contains("illustrator")
+            || app_lower.contains("figma")
+            || app_lower.contains("sketch")
+            || app_lower.contains("canva")
+            || app_lower.contains("blender")
+            || app_lower.contains("after effects")
+            || app_lower.contains("premiere")
+            || app_lower.contains("final cut")
+            || app_lower.contains("davinci")
+        {
+            Some("设计工具".to_string())
+        }
+        // 娱乐
+        else if app_lower.contains("music")
+            || app_lower.contains("video")
+            || app_lower.contains("player")
+            || app_lower.contains("spotify")
+            || app_lower.contains("netflix")
+            || app_lower.contains("youtube")
+            || app_lower.contains("bilibili")
+            || app_lower.contains("游戏")
+            || app_lower.contains("game")
+            || app_lower.contains("steam")
+            || app_lower.contains("epic")
+            || app_lower.contains("twitch")
+        {
             Some("娱乐".to_string())
+        }
+        // 学习工具
+        else if app_lower.contains("anki")
+            || app_lower.contains("coursera")
+            || app_lower.contains("udemy")
+            || app_lower.contains("khan")
+            || app_lower.contains("duolingo")
+            || app_lower.contains("kindle")
+            || app_lower.contains("books")
+            || app_lower.contains("reader")
+        {
+            Some("学习工具".to_string())
+        }
+        // 系统工具
+        else if app_lower.contains("finder")
+            || app_lower.contains("explorer")
+            || app_lower.contains("activity monitor")
+            || app_lower.contains("task manager")
+            || app_lower.contains("system preferences")
+            || app_lower.contains("settings")
+            || app_lower.contains("control panel")
+            || app_lower.contains("calculator")
+        {
+            Some("系统工具".to_string())
         } else {
             Some("其他".to_string())
         }
@@ -176,7 +286,7 @@ impl AIAnalyzer {
     async fn call_ai_api(&self, data: &AIAnalysisRequest) -> Result<String> {
         // 构建提示词
         let prompt = self.build_analysis_prompt(data);
-        
+
         // 构建AI请求
         let request = AIRequest {
             messages: vec![
@@ -203,7 +313,7 @@ impl AIAnalyzer {
     fn build_analysis_prompt(&self, data: &AIAnalysisRequest) -> String {
         let total_hours = data.total_time as f64 / 3600.0;
         let app_count = data.app_distribution.len();
-        
+
         // 获取前5个最常用的应用
         let mut sorted_apps: Vec<_> = data.app_distribution.iter().collect();
         sorted_apps.sort_by(|a, b| b.1.cmp(a.1));
@@ -253,11 +363,15 @@ JSON格式示例：
         )
     }
 
-    fn parse_ai_response(&self, response: &str, _data: &AIAnalysisRequest) -> Result<AIAnalysisResult> {
+    fn parse_ai_response(
+        &self,
+        response: &str,
+        _data: &AIAnalysisRequest,
+    ) -> Result<AIAnalysisResult> {
         // 尝试从响应中提取JSON
         let json_start = response.find('{');
         let json_end = response.rfind('}');
-        
+
         if let (Some(start), Some(end)) = (json_start, json_end) {
             let json_str = &response[start..=end];
             match serde_json::from_str::<AIAnalysisResult>(json_str) {
@@ -296,11 +410,13 @@ JSON格式示例：
         // 计算基本统计
         let total_hours = total_time as f64 / 3600.0;
         let app_count = app_stats.len();
-        
+
         // 分析应用类别分布
         let mut category_time: HashMap<String, u64> = HashMap::new();
         for (app_name, duration) in &app_stats {
-            let category = self.categorize_app(app_name).unwrap_or_else(|| "其他".to_string());
+            let category = self
+                .categorize_app(app_name)
+                .unwrap_or_else(|| "其他".to_string());
             *category_time.entry(category).or_insert(0) += duration;
         }
 
@@ -330,7 +446,8 @@ JSON格式示例：
         // 找出最长的专注会话
         let mut focus_periods = vec![];
         for session in &sessions {
-            if session.total_duration > 1800 { // 超过30分钟
+            if session.total_duration > 1800 {
+                // 超过30分钟
                 focus_periods.push(FocusPeriod {
                     app_name: session.app_name.clone(),
                     duration: session.total_duration,
@@ -347,7 +464,8 @@ JSON格式示例：
             "今日共使用电脑{:.1}小时，涉及{}个应用。主要时间分配：{}",
             total_hours,
             app_count,
-            time_distribution.iter()
+            time_distribution
+                .iter()
                 .take(3)
                 .map(|(k, v)| format!("{}: {}", k, v))
                 .collect::<Vec<_>>()
@@ -364,10 +482,15 @@ JSON格式示例：
         })
     }
 
-    fn calculate_productivity_score(&self, category_time: &HashMap<String, u64>, total_time: u64) -> f32 {
-        let productive_categories = ["开发工具", "办公软件"];
-        let neutral_categories = ["浏览器", "沟通工具"];
-        
+    fn calculate_productivity_score(
+        &self,
+        category_time: &HashMap<String, u64>,
+        total_time: u64,
+    ) -> f32 {
+        let productive_categories = ["开发工具", "办公软件", "设计工具", "学习工具"];
+        let neutral_categories = ["浏览器", "沟通工具", "系统工具"];
+        let entertainment_categories = ["娱乐"];
+
         let mut productive_time = 0u64;
         let mut neutral_time = 0u64;
         let mut entertainment_time = 0u64;
@@ -377,7 +500,7 @@ JSON格式示例：
                 productive_time += duration;
             } else if neutral_categories.contains(&category.as_str()) {
                 neutral_time += duration;
-            } else if category == "娱乐" {
+            } else if entertainment_categories.contains(&category.as_str()) {
                 entertainment_time += duration;
             }
         }
@@ -390,9 +513,19 @@ JSON格式示例：
         let neutral_ratio = neutral_time as f32 / total_time as f32;
         let entertainment_ratio = entertainment_time as f32 / total_time as f32;
 
-        // 计算评分：生产力时间权重最高，中性时间权重中等，娱乐时间扣分
-        let score = (productive_ratio * 100.0) + (neutral_ratio * 50.0) - (entertainment_ratio * 20.0);
-        score.max(0.0).min(100.0)
+        // 计算生产力评分
+        // 生产力应用：100分
+        // 中性应用：50分
+        // 娱乐应用：0分
+        // 其他应用：30分
+        let other_ratio = 1.0 - productive_ratio - neutral_ratio - entertainment_ratio;
+
+        let score = (productive_ratio * 100.0)
+            + (neutral_ratio * 50.0)
+            + (entertainment_ratio * 0.0)
+            + (other_ratio * 30.0);
+
+        score.clamp(0.0, 100.0)
     }
 }
 
@@ -403,7 +536,7 @@ impl Default for AIAnalyzer {
             // 如果创建失败，使用默认配置
             UnifiedAIClient::new(AIConfig::default()).unwrap()
         });
-        
+
         Self { config, client }
     }
 }

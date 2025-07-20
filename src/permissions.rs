@@ -2,6 +2,7 @@ use anyhow::Result;
 use std::process::Command;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(dead_code)]
 pub enum PermissionStatus {
     Granted,
     Denied,
@@ -22,8 +23,14 @@ impl PermissionManager {
 
         #[cfg(target_os = "macos")]
         {
-            permissions.push(("Screen Recording".to_string(), self.check_screen_recording_permission()?));
-            permissions.push(("Accessibility".to_string(), self.check_accessibility_permission()?));
+            permissions.push((
+                "Screen Recording".to_string(),
+                self.check_screen_recording_permission()?,
+            ));
+            permissions.push((
+                "Accessibility".to_string(),
+                self.check_accessibility_permission()?,
+            ));
         }
 
         #[cfg(target_os = "linux")]
@@ -64,7 +71,7 @@ impl PermissionManager {
     /// 显示权限状态
     pub fn show_permission_status(&self) -> Result<()> {
         let permissions = self.check_all_permissions()?;
-        
+
         println!("\n=== 权限状态 ===");
         for (name, status) in permissions {
             let status_str = match status {
@@ -83,7 +90,7 @@ impl PermissionManager {
     /// 验证权限是否足够运行应用
     pub fn validate_permissions(&self) -> Result<bool> {
         let permissions = self.check_all_permissions()?;
-        
+
         for (name, status) in &permissions {
             if *status != PermissionStatus::Granted {
                 println!("❌ 权限不足: {} - {:?}", name, status);
@@ -112,7 +119,7 @@ impl PermissionManager {
 
     fn request_macos_permissions(&self) -> Result<()> {
         println!("🍎 macOS 权限请求");
-        
+
         // 检查屏幕录制权限
         match self.check_screen_recording_permission()? {
             PermissionStatus::Granted => {
@@ -126,7 +133,7 @@ impl PermissionManager {
                 println!("3. 点击锁图标并输入密码");
                 println!("4. 勾选 'timetracker' 或当前终端应用");
                 println!("5. 重启应用");
-                
+
                 // 尝试打开系统偏好设置
                 let _ = Command::new("open")
                     .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture")
@@ -147,7 +154,7 @@ impl PermissionManager {
                 println!("3. 点击锁图标并输入密码");
                 println!("4. 勾选 'timetracker' 或当前终端应用");
                 println!("5. 重启应用");
-                
+
                 // 尝试打开系统偏好设置
                 let _ = Command::new("open")
                     .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
@@ -166,9 +173,7 @@ impl PermissionManager {
         match std::env::var("DISPLAY") {
             Ok(_) => {
                 // 尝试运行 xdotool 来测试权限
-                let output = Command::new("xdotool")
-                    .arg("getactivewindow")
-                    .output();
+                let output = Command::new("xdotool").arg("getactivewindow").output();
 
                 match output {
                     Ok(output) if output.status.success() => Ok(PermissionStatus::Granted),
@@ -181,7 +186,7 @@ impl PermissionManager {
 
     fn request_linux_permissions(&self) -> Result<()> {
         println!("🐧 Linux 权限检查");
-        
+
         match self.check_x11_access()? {
             PermissionStatus::Granted => {
                 println!("✅ X11 访问权限正常");
@@ -217,22 +222,22 @@ impl PermissionManager {
 /// 自动权限检查和请求
 pub fn auto_request_permissions() -> Result<bool> {
     let manager = PermissionManager::new();
-    
+
     println!("🔐 正在检查应用权限...");
-    
+
     // 显示当前权限状态
     manager.show_permission_status()?;
-    
+
     // 如果权限不足，请求权限
     if !manager.validate_permissions()? {
         println!("⚠️  检测到权限不足，正在请求必要权限...");
         manager.request_permissions()?;
-        
+
         // 再次检查权限
         println!("\n请授权后重新运行应用程序");
         return Ok(false);
     }
-    
+
     Ok(true)
 }
 
@@ -240,13 +245,13 @@ pub fn auto_request_permissions() -> Result<bool> {
 pub fn check_permissions() -> Result<()> {
     let manager = PermissionManager::new();
     manager.show_permission_status()?;
-    
+
     if manager.validate_permissions()? {
         println!("🎉 所有权限配置正确，应用可以正常运行！");
     } else {
         println!("❌ 权限配置不完整，请运行权限请求流程");
         manager.request_permissions()?;
     }
-    
+
     Ok(())
 }

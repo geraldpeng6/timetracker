@@ -134,15 +134,15 @@ impl TimeTracker {
         fs::write(&self.data_file, json)?;
         Ok(())
     }
-    
+
     pub async fn start_monitoring(&mut self) -> Result<()> {
         log::info!("开始监控，间隔: {:?}", self.interval);
-        
+
         let mut interval_timer = time::interval(self.interval);
-        
+
         loop {
             interval_timer.tick().await;
-            
+
             match get_active_window() {
                 Ok(window_info) => {
                     self.update_activity(window_info)?;
@@ -156,7 +156,7 @@ impl TimeTracker {
 
     pub fn update_activity(&mut self, window_info: WindowInfo) -> Result<()> {
         let activity_key = format!("{} - {}", window_info.app_name, window_info.window_title);
-        
+
         // 检查是否需要切换活动
         let should_switch = match &self.current_activity {
             None => true,
@@ -192,22 +192,22 @@ impl TimeTracker {
 
         Ok(())
     }
-    
+
     pub fn get_statistics(&self) -> HashMap<String, u64> {
         let mut stats = HashMap::new();
-        
+
         for activity in &self.data.activities {
             let key = format!("{} - {}", activity.app_name, activity.window_title);
             *stats.entry(key).or_insert(0) += activity.duration;
         }
-        
+
         // 包含当前活动的时间
         if let Some(current) = &self.current_activity {
             let key = format!("{} - {}", current.app_name, current.window_title);
             let current_duration = (Utc::now() - current.start_time).num_seconds() as u64;
             *stats.entry(key).or_insert(0) += current_duration;
         }
-        
+
         stats
     }
 
@@ -219,25 +219,25 @@ impl TimeTracker {
 
     pub fn get_activities_by_app(&self) -> HashMap<String, Vec<&ActivityRecord>> {
         let mut by_app = HashMap::new();
-        
+
         for activity in &self.data.activities {
             by_app
                 .entry(activity.app_name.clone())
                 .or_insert_with(Vec::new)
                 .push(activity);
         }
-        
+
         by_app
     }
 
     pub fn get_total_time(&self) -> u64 {
         let mut total = self.data.activities.iter().map(|a| a.duration).sum::<u64>();
-        
+
         // 加上当前活动的时间
         if let Some(current) = &self.current_activity {
             total += (Utc::now() - current.start_time).num_seconds() as u64;
         }
-        
+
         total
     }
 
@@ -245,14 +245,14 @@ impl TimeTracker {
     pub fn get_activity_sessions(&self) -> Vec<ActivitySession> {
         let mut sessions = Vec::new();
         let mut current_session: Option<ActivitySession> = None;
-        
+
         // 按时间排序活动
         let mut sorted_activities = self.data.activities.clone();
         sorted_activities.sort_by(|a, b| a.start_time.cmp(&b.start_time));
-        
+
         for activity in sorted_activities {
             let activity_key = format!("{} - {}", activity.app_name, activity.window_title);
-            
+
             match &mut current_session {
                 None => {
                     // 开始新会话
@@ -267,11 +267,12 @@ impl TimeTracker {
                 }
                 Some(session) => {
                     let session_key = format!("{} - {}", session.app_name, session.window_title);
-                    
+
                     // 检查是否是同一个应用和窗口，且时间间隔不超过5分钟
                     let time_gap = (activity.start_time - session.end_time).num_seconds();
-                    
-                    if session_key == activity_key && time_gap <= 300 { // 5分钟内
+
+                    if session_key == activity_key && time_gap <= 300 {
+                        // 5分钟内
                         // 扩展当前会话
                         session.end_time = activity.end_time.unwrap_or(activity.start_time);
                         session.total_duration += activity.duration;
@@ -291,12 +292,12 @@ impl TimeTracker {
                 }
             }
         }
-        
+
         // 添加最后一个会话
         if let Some(session) = current_session {
             sessions.push(session);
         }
-        
+
         sessions
     }
 

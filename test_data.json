@@ -15,8 +15,24 @@
       "end_time": "2025-07-20T13:51:42.457721Z",
       "duration_seconds": 110,
       "process_id": 0
+    },
+    {
+      "app_name": "Trae",
+      "window_title": "Unknown Window",
+      "start_time": "2025-07-20T13:51:42.459611Z",
+      "end_time": "2025-07-20T20:42:41.389033Z",
+      "duration_seconds": 24658,
+      "process_id": 1100
+    },
+    {
+      "app_name": "Active Application",
+      "window_title": "Active Window",
+      "start_time": "2025-07-20T20:42:41.392056Z",
+      "end_time": "2025-07-20T20:44:31.596227Z",
+      "duration_seconds": 110,
+      "process_id": 0
     }
   ],
-  "last_updated": "2025-07-20T13:51:42.457906Z",
+  "last_updated": "2025-07-20T20:44:31.599243Z",
   "version": "0.2.0"
 }

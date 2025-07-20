@@ -1,6 +1,9 @@
-use crate::ai_config::{AIConfig, AIProvider, AIModelConfig};
-use anyhow::{Result, anyhow};
-use reqwest::{Client, header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE}};
+use crate::ai_config::{AIConfig, AIModelConfig, AIProvider};
+use anyhow::{anyhow, Result};
+use reqwest::{
+    header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE},
+    Client,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::time::Duration;
@@ -59,7 +62,9 @@ impl UnifiedAIClient {
 
     /// 发送聊天请求
     pub async fn chat(&self, request: AIRequest) -> Result<AIResponse> {
-        let model_config = self.config.get_current_model_config()
+        let model_config = self
+            .config
+            .get_current_model_config()
             .ok_or_else(|| anyhow!("未找到当前模型配置"))?;
 
         match model_config.provider {
@@ -74,12 +79,21 @@ impl UnifiedAIClient {
     }
 
     /// 调用OpenAI API
-    async fn call_openai_api(&self, request: AIRequest, model_config: &AIModelConfig) -> Result<AIResponse> {
-        let api_key = self.config.get_api_key(&AIProvider::OpenAI)
+    async fn call_openai_api(
+        &self,
+        request: AIRequest,
+        model_config: &AIModelConfig,
+    ) -> Result<AIResponse> {
+        let api_key = self
+            .config
+            .get_api_key(&AIProvider::OpenAI)
             .ok_or_else(|| anyhow!("未配置OpenAI API密钥"))?;
 
         let mut headers = HeaderMap::new();
-        headers.insert(AUTHORIZATION, HeaderValue::from_str(&format!("Bearer {}", api_key))?);
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", api_key))?,
+        );
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
 
         let payload = json!({
@@ -90,7 +104,8 @@ impl UnifiedAIClient {
             "stream": request.stream.unwrap_or(false)
         });
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .post(&model_config.api_url)
             .headers(headers)
             .json(&payload)
@@ -107,8 +122,14 @@ impl UnifiedAIClient {
     }
 
     /// 调用Anthropic API
-    async fn call_anthropic_api(&self, request: AIRequest, model_config: &AIModelConfig) -> Result<AIResponse> {
-        let api_key = self.config.get_api_key(&AIProvider::Anthropic)
+    async fn call_anthropic_api(
+        &self,
+        request: AIRequest,
+        model_config: &AIModelConfig,
+    ) -> Result<AIResponse> {
+        let api_key = self
+            .config
+            .get_api_key(&AIProvider::Anthropic)
             .ok_or_else(|| anyhow!("未配置Anthropic API密钥"))?;
 
         let mut headers = HeaderMap::new();
@@ -141,7 +162,8 @@ impl UnifiedAIClient {
             payload["system"] = json!(system_message);
         }
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .post(&model_config.api_url)
             .headers(headers)
             .json(&payload)
@@ -158,12 +180,21 @@ impl UnifiedAIClient {
     }
 
     /// 调用Google API (使用OpenAI兼容接口)
-    async fn call_google_api(&self, request: AIRequest, model_config: &AIModelConfig) -> Result<AIResponse> {
-        let api_key = self.config.get_api_key(&AIProvider::Google)
+    async fn call_google_api(
+        &self,
+        request: AIRequest,
+        model_config: &AIModelConfig,
+    ) -> Result<AIResponse> {
+        let api_key = self
+            .config
+            .get_api_key(&AIProvider::Google)
             .ok_or_else(|| anyhow!("未配置Google API密钥"))?;
 
         let mut headers = HeaderMap::new();
-        headers.insert(AUTHORIZATION, HeaderValue::from_str(&format!("Bearer {}", api_key))?);
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", api_key))?,
+        );
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
 
         let payload = json!({
@@ -173,7 +204,8 @@ impl UnifiedAIClient {
             "temperature": request.temperature.unwrap_or(model_config.temperature)
         });
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .post(&model_config.api_url)
             .headers(headers)
             .json(&payload)
@@ -190,8 +222,14 @@ impl UnifiedAIClient {
     }
 
     /// 调用百度API
-    async fn call_baidu_api(&self, request: AIRequest, model_config: &AIModelConfig) -> Result<AIResponse> {
-        let api_key = self.config.get_api_key(&AIProvider::Baidu)
+    async fn call_baidu_api(
+        &self,
+        request: AIRequest,
+        model_config: &AIModelConfig,
+    ) -> Result<AIResponse> {
+        let api_key = self
+            .config
+            .get_api_key(&AIProvider::Baidu)
             .ok_or_else(|| anyhow!("未配置百度API密钥"))?;
 
         // 百度需要先获取access_token
@@ -208,7 +246,8 @@ impl UnifiedAIClient {
 
         let url = format!("{}?access_token={}", model_config.api_url, access_token);
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .post(&url)
             .headers(headers)
             .json(&payload)
@@ -225,12 +264,21 @@ impl UnifiedAIClient {
     }
 
     /// 调用阿里云API
-    async fn call_alibaba_api(&self, request: AIRequest, model_config: &AIModelConfig) -> Result<AIResponse> {
-        let api_key = self.config.get_api_key(&AIProvider::Alibaba)
+    async fn call_alibaba_api(
+        &self,
+        request: AIRequest,
+        model_config: &AIModelConfig,
+    ) -> Result<AIResponse> {
+        let api_key = self
+            .config
+            .get_api_key(&AIProvider::Alibaba)
             .ok_or_else(|| anyhow!("未配置阿里云API密钥"))?;
 
         let mut headers = HeaderMap::new();
-        headers.insert(AUTHORIZATION, HeaderValue::from_str(&format!("Bearer {}", api_key))?);
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", api_key))?,
+        );
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
 
         let payload = json!({
@@ -244,7 +292,8 @@ impl UnifiedAIClient {
             }
         });
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .post(&model_config.api_url)
             .headers(headers)
             .json(&payload)
@@ -261,12 +310,21 @@ impl UnifiedAIClient {
     }
 
     /// 调用硅基流动API (使用OpenAI兼容接口)
-    async fn call_siliconflow_api(&self, request: AIRequest, model_config: &AIModelConfig) -> Result<AIResponse> {
-        let api_key = self.config.get_api_key(&AIProvider::SiliconFlow)
+    async fn call_siliconflow_api(
+        &self,
+        request: AIRequest,
+        model_config: &AIModelConfig,
+    ) -> Result<AIResponse> {
+        let api_key = self
+            .config
+            .get_api_key(&AIProvider::SiliconFlow)
             .ok_or_else(|| anyhow!("未配置硅基流动API密钥"))?;
 
         let mut headers = HeaderMap::new();
-        headers.insert(AUTHORIZATION, HeaderValue::from_str(&format!("Bearer {}", api_key))?);
+        headers.insert(
+            AUTHORIZATION,
+            HeaderValue::from_str(&format!("Bearer {}", api_key))?,
+        );
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
 
         let payload = json!({
@@ -277,7 +335,8 @@ impl UnifiedAIClient {
             "stream": request.stream.unwrap_or(false)
         });
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .post(&model_config.api_url)
             .headers(headers)
             .json(&payload)
@@ -294,7 +353,11 @@ impl UnifiedAIClient {
     }
 
     /// 调用本地API (Ollama)
-    async fn call_local_api(&self, request: AIRequest, model_config: &AIModelConfig) -> Result<AIResponse> {
+    async fn call_local_api(
+        &self,
+        request: AIRequest,
+        model_config: &AIModelConfig,
+    ) -> Result<AIResponse> {
         let mut headers = HeaderMap::new();
         headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
 
@@ -308,7 +371,8 @@ impl UnifiedAIClient {
             }
         });
 
-        let response = self.http_client
+        let response = self
+            .http_client
             .post(&model_config.api_url)
             .headers(headers)
             .json(&payload)
@@ -349,15 +413,11 @@ impl UnifiedAIClient {
             .ok_or_else(|| anyhow!("无法解析响应内容"))?
             .to_string();
 
-        let usage = if let Some(usage_obj) = response["usage"].as_object() {
-            Some(AIUsage {
-                prompt_tokens: usage_obj["prompt_tokens"].as_u64().unwrap_or(0) as u32,
-                completion_tokens: usage_obj["completion_tokens"].as_u64().unwrap_or(0) as u32,
-                total_tokens: usage_obj["total_tokens"].as_u64().unwrap_or(0) as u32,
-            })
-        } else {
-            None
-        };
+        let usage = response["usage"].as_object().map(|usage_obj| AIUsage {
+            prompt_tokens: usage_obj["prompt_tokens"].as_u64().unwrap_or(0) as u32,
+            completion_tokens: usage_obj["completion_tokens"].as_u64().unwrap_or(0) as u32,
+            total_tokens: usage_obj["total_tokens"].as_u64().unwrap_or(0) as u32,
+        });
 
         let finish_reason = response["choices"][0]["finish_reason"]
             .as_str()
@@ -378,20 +438,15 @@ impl UnifiedAIClient {
             .ok_or_else(|| anyhow!("无法解析Anthropic响应内容"))?
             .to_string();
 
-        let usage = if let Some(usage_obj) = response["usage"].as_object() {
-            Some(AIUsage {
-                prompt_tokens: usage_obj["input_tokens"].as_u64().unwrap_or(0) as u32,
-                completion_tokens: usage_obj["output_tokens"].as_u64().unwrap_or(0) as u32,
-                total_tokens: (usage_obj["input_tokens"].as_u64().unwrap_or(0) + 
-                              usage_obj["output_tokens"].as_u64().unwrap_or(0)) as u32,
-            })
-        } else {
-            None
-        };
+        let usage = response["usage"].as_object().map(|usage_obj| AIUsage {
+            prompt_tokens: usage_obj["input_tokens"].as_u64().unwrap_or(0) as u32,
+            completion_tokens: usage_obj["output_tokens"].as_u64().unwrap_or(0) as u32,
+            total_tokens: (usage_obj["input_tokens"].as_u64().unwrap_or(0)
+                + usage_obj["output_tokens"].as_u64().unwrap_or(0))
+                as u32,
+        });
 
-        let finish_reason = response["stop_reason"]
-            .as_str()
-            .map(|s| s.to_string());
+        let finish_reason = response["stop_reason"].as_str().map(|s| s.to_string());
 
         Ok(AIResponse {
             content,
@@ -408,15 +463,11 @@ impl UnifiedAIClient {
             .ok_or_else(|| anyhow!("无法解析百度响应内容"))?
             .to_string();
 
-        let usage = if let Some(usage_obj) = response["usage"].as_object() {
-            Some(AIUsage {
-                prompt_tokens: usage_obj["prompt_tokens"].as_u64().unwrap_or(0) as u32,
-                completion_tokens: usage_obj["completion_tokens"].as_u64().unwrap_or(0) as u32,
-                total_tokens: usage_obj["total_tokens"].as_u64().unwrap_or(0) as u32,
-            })
-        } else {
-            None
-        };
+        let usage = response["usage"].as_object().map(|usage_obj| AIUsage {
+            prompt_tokens: usage_obj["prompt_tokens"].as_u64().unwrap_or(0) as u32,
+            completion_tokens: usage_obj["completion_tokens"].as_u64().unwrap_or(0) as u32,
+            total_tokens: usage_obj["total_tokens"].as_u64().unwrap_or(0) as u32,
+        });
 
         Ok(AIResponse {
             content,
@@ -433,15 +484,11 @@ impl UnifiedAIClient {
             .ok_or_else(|| anyhow!("无法解析阿里云响应内容"))?
             .to_string();
 
-        let usage = if let Some(usage_obj) = response["usage"].as_object() {
-            Some(AIUsage {
-                prompt_tokens: usage_obj["input_tokens"].as_u64().unwrap_or(0) as u32,
-                completion_tokens: usage_obj["output_tokens"].as_u64().unwrap_or(0) as u32,
-                total_tokens: usage_obj["total_tokens"].as_u64().unwrap_or(0) as u32,
-            })
-        } else {
-            None
-        };
+        let usage = response["usage"].as_object().map(|usage_obj| AIUsage {
+            prompt_tokens: usage_obj["input_tokens"].as_u64().unwrap_or(0) as u32,
+            completion_tokens: usage_obj["output_tokens"].as_u64().unwrap_or(0) as u32,
+            total_tokens: usage_obj["total_tokens"].as_u64().unwrap_or(0) as u32,
+        });
 
         let finish_reason = response["output"]["finish_reason"]
             .as_str()
@@ -471,19 +518,21 @@ impl UnifiedAIClient {
     }
 
     /// 获取当前配置
+    #[allow(dead_code)]
     pub fn get_config(&self) -> &AIConfig {
         &self.config
     }
 
     /// 更新配置
+    #[allow(dead_code)]
     pub fn update_config(&mut self, config: AIConfig) -> Result<()> {
         self.config = config;
-        
+
         // 重新创建HTTP客户端以应用新的超时设置
         self.http_client = Client::builder()
             .timeout(Duration::from_secs(self.config.timeout_seconds))
             .build()?;
-        
+
         Ok(())
     }
 }
