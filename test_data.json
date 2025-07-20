@@ -63,8 +63,72 @@
       "end_time": "2025-07-20T21:37:04.166062Z",
       "duration_seconds": 20,
       "process_id": 0
+    },
+    {
+      "app_name": "Trae",
+      "window_title": "Unknown Window",
+      "start_time": "2025-07-20T21:37:04.167920Z",
+      "end_time": "2025-07-20T21:44:44.514996Z",
+      "duration_seconds": 460,
+      "process_id": 1100
+    },
+    {
+      "app_name": "Active Application",
+      "window_title": "Active Window",
+      "start_time": "2025-07-20T21:44:44.517428Z",
+      "end_time": "2025-07-20T21:45:14.558083Z",
+      "duration_seconds": 30,
+      "process_id": 0
+    },
+    {
+      "app_name": "Trae",
+      "window_title": "Unknown Window",
+      "start_time": "2025-07-20T21:45:14.559782Z",
+      "end_time": "2025-07-20T21:46:34.646919Z",
+      "duration_seconds": 80,
+      "process_id": 1100
+    },
+    {
+      "app_name": "Active Application",
+      "window_title": "Active Window",
+      "start_time": "2025-07-20T21:46:34.648322Z",
+      "end_time": "2025-07-20T21:46:44.655187Z",
+      "duration_seconds": 10,
+      "process_id": 0
+    },
+    {
+      "app_name": "Trae",
+      "window_title": "Unknown Window",
+      "start_time": "2025-07-20T21:46:44.655713Z",
+      "end_time": "2025-07-20T21:57:35.469132Z",
+      "duration_seconds": 650,
+      "process_id": 1100
+    },
+    {
+      "app_name": "Active Application",
+      "window_title": "Active Window",
+      "start_time": "2025-07-20T21:57:35.472701Z",
+      "end_time": "2025-07-20T21:57:45.477781Z",
+      "duration_seconds": 10,
+      "process_id": 0
+    },
+    {
+      "app_name": "Trae",
+      "window_title": "Unknown Window",
+      "start_time": "2025-07-20T21:57:45.477986Z",
+      "end_time": "2025-07-20T21:58:35.524072Z",
+      "duration_seconds": 50,
+      "process_id": 1100
+    },
+    {
+      "app_name": "Active Application",
+      "window_title": "Active Window",
+      "start_time": "2025-07-20T21:58:35.524408Z",
+      "end_time": "2025-07-20T21:58:45.529349Z",
+      "duration_seconds": 10,
+      "process_id": 0
     }
   ],
-  "last_updated": "2025-07-20T21:37:04.166509Z",
+  "last_updated": "2025-07-20T21:58:45.529363Z",
   "version": "0.2.0"
 }

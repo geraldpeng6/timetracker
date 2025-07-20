@@ -221,10 +221,7 @@ mod macos {
                         end tell
                     "#;
 
-                    let pid_output = Command::new("osascript")
-                        .arg("-e")
-                        .arg(pid_script)
-                        .output();
+                    let pid_output = Command::new("osascript").arg("-e").arg(pid_script).output();
 
                     let process_id = match pid_output {
                         Ok(output) if output.status.success() => {

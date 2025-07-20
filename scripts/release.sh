@@ -143,22 +143,58 @@ update_version() {
     echo -e "${GREEN}✓ 已更新版本号为 $new_version${NC}"
 }
 
-# 运行测试
+# 运行完整测试套件
 run_tests() {
     if [ "$NO_BUILD" = true ]; then
         echo -e "${YELLOW}跳过测试${NC}"
         return
     fi
     
-    echo -e "${BLUE}运行测试...${NC}"
+    echo -e "${BLUE}运行完整测试套件...${NC}"
     
     if [ "$DRY_RUN" = true ]; then
-        echo -e "${YELLOW}[预览] cargo test${NC}"
+        echo -e "${YELLOW}[预览] 代码格式检查${NC}"
+        echo -e "${YELLOW}[预览] Clippy 静态分析${NC}"
+        echo -e "${YELLOW}[预览] 单元测试${NC}"
+        echo -e "${YELLOW}[预览] 编译检查${NC}"
         return
     fi
     
-    cargo test
-    echo -e "${GREEN}✓ 测试通过${NC}"
+    # 1. 代码格式检查
+    echo -e "${BLUE}  📝 检查代码格式...${NC}"
+    if ! cargo fmt --all -- --check; then
+        echo -e "${RED}❌ 代码格式检查失败${NC}"
+        echo -e "${YELLOW}💡 运行 'cargo fmt --all' 修复格式问题${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}  ✓ 代码格式检查通过${NC}"
+    
+    # 2. Clippy 静态分析
+    echo -e "${BLUE}  🔍 运行 Clippy 静态分析...${NC}"
+    if ! cargo clippy --all-targets --all-features -- -D warnings; then
+        echo -e "${RED}❌ Clippy 检查失败${NC}"
+        echo -e "${YELLOW}💡 请修复上述警告和错误${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}  ✓ Clippy 检查通过${NC}"
+    
+    # 3. 单元测试
+    echo -e "${BLUE}  🧪 运行单元测试...${NC}"
+    if ! cargo test --verbose; then
+        echo -e "${RED}❌ 单元测试失败${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}  ✓ 单元测试通过${NC}"
+    
+    # 4. 编译检查
+    echo -e "${BLUE}  🔨 编译检查...${NC}"
+    if ! cargo build --verbose; then
+        echo -e "${RED}❌ 编译失败${NC}"
+        exit 1
+    fi
+    echo -e "${GREEN}  ✓ 编译检查通过${NC}"
+    
+    echo -e "${GREEN}✓ 所有测试通过${NC}"
 }
 
 # 构建项目

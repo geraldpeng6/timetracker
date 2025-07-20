@@ -118,6 +118,84 @@ timetracker/
 └── scripts/               # 构建脚本
 ```
 
+## 🛠️ 开发工作流程
+
+### 快速开始开发
+
+```bash
+# 克隆项目
+git clone https://github.com/geraldpeng6/timetracker.git
+cd timetracker
+
+# 安装依赖并编译
+cargo build
+
+# 运行完整测试套件
+./scripts/test.sh
+# 或使用 Makefile
+make all
+```
+
+### 代码质量检查
+
+在每次提交前，请运行以下检查：
+
+```bash
+# 方式1: 使用测试脚本（推荐）
+./scripts/test.sh
+
+# 方式2: 使用 Makefile
+make check          # 快速检查（格式 + Clippy）
+make test           # 运行测试
+make all            # 完整流程
+
+# 方式3: 手动执行
+cargo fmt --all -- --check    # 代码格式检查
+cargo clippy --all-targets --all-features -- -D warnings  # 静态分析
+cargo test --verbose          # 单元测试
+cargo build --release         # 编译检查
+```
+
+### 自动化检查（推荐）
+
+安装 Git pre-commit hooks，每次提交时自动进行代码检查：
+
+```bash
+# 安装 pre-commit hooks
+make setup-hooks
+# 或直接运行
+./scripts/install-hooks.sh
+
+# 现在每次 git commit 都会自动检查代码质量
+# 如需跳过检查：git commit --no-verify
+```
+
+### 可用的 Make 命令
+
+| 命令 | 描述 |
+|------|------|
+| `make help` | 显示帮助信息 |
+| `make check` | 快速检查（格式 + Clippy） |
+| `make test` | 运行测试 |
+| `make build` | 编译项目 |
+| `make release` | 编译 Release 版本 |
+| `make dev` | 开发模式（格式化 + 检查 + 测试） |
+| `make all` | 完整流程（检查 + 测试 + 构建） |
+| `make clean` | 清理构建文件 |
+
+### 发布流程
+
+```bash
+# 发布补丁版本
+./scripts/release.sh patch
+
+# 发布次版本
+./scripts/release.sh minor
+
+# 预览发布（不实际执行）
+./scripts/release.sh --dry-run patch
+```
+
 ## 📚 文档
 
 - [快速开始](QUICKSTART.md) - 详细的入门指南

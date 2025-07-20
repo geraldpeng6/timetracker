@@ -8,7 +8,7 @@ use std::path::Path;
 use std::time::Duration;
 use tokio::time;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ActivityRecord {
     pub app_name: String,
     pub window_title: String,
