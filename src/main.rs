@@ -469,7 +469,10 @@ async fn main() -> Result<()> {
             handle_ai_command(sub_matches).await?;
         }
         _ => {
-            println!("TimeTracker v{} - 智能时间追踪工具", env!("CARGO_PKG_VERSION"));
+            println!(
+                "TimeTracker v{} - 智能时间追踪工具",
+                env!("CARGO_PKG_VERSION")
+            );
             println!();
             println!("使用方法:");
             println!("  timetracker start [选项]     - 开始时间追踪");

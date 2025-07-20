@@ -3,8 +3,8 @@ use anyhow::Result;
 use chrono::{Local, Timelike, Utc};
 use crossterm::{
     event::{
-        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind, MouseEvent,
-        MouseEventKind, MouseButton,
+        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind, MouseButton,
+        MouseEvent, MouseEventKind,
     },
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -15,8 +15,8 @@ use ratatui::{
     style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{
-        BarChart, Block, Borders, Cell, Clear, Gauge, List, ListItem, ListState, Paragraph, Row,
-        Sparkline, Table, TableState, Tabs, Wrap,
+        BarChart, Block, Borders, Cell, Clear, Gauge, ListState, Paragraph, Row, Sparkline, Table,
+        TableState, Tabs, Wrap,
     },
     Frame, Terminal,
 };
@@ -93,7 +93,6 @@ pub struct TuiApp {
     /// 鼠标悬浮位置
     pub mouse_position: (u16, u16),
     /// AI 配置相关状态
-    pub ai_config_editing: bool,
     pub ai_api_key: String,
     pub ai_model: String,
     pub ai_models: Vec<String>,
@@ -131,7 +130,6 @@ impl TuiApp {
             mouse_enabled: true,
             selected_column: 0,
             mouse_position: (0, 0),
-            ai_config_editing: false,
             ai_api_key: String::new(),
             ai_model: "gpt-3.5-turbo".to_string(),
             ai_models: vec![
@@ -143,7 +141,12 @@ impl TuiApp {
             ],
             ai_model_index: 0,
             chart_mode: ChartMode::BarChart,
-            chart_modes: vec![ChartMode::BarChart, ChartMode::PieChart, ChartMode::Gauge, ChartMode::Sparkline],
+            chart_modes: vec![
+                ChartMode::BarChart,
+                ChartMode::PieChart,
+                ChartMode::Gauge,
+                ChartMode::Sparkline,
+            ],
             active_charts: 2,
             input_mode: InputMode::Normal,
             input_buffer: String::new(),
@@ -181,78 +184,73 @@ impl TuiApp {
                     Event::Key(key) => {
                         if key.kind == KeyEventKind::Press {
                             match self.input_mode {
-                                InputMode::Normal => {
-                                    match key.code {
-                                        KeyCode::Char('q') | KeyCode::Esc => {
-                                            self.should_quit = true;
-                                        }
-                                        KeyCode::Char('h') | KeyCode::F(1) => {
-                                            self.show_help = !self.show_help;
-                                        }
-                                        KeyCode::Char('1') => self.current_tab = TabIndex::Dashboard,
-                                        KeyCode::Char('2') => self.current_tab = TabIndex::Analytics,
-                                        KeyCode::Char('3') => self.current_tab = TabIndex::Settings,
-                                        KeyCode::Tab => self.next_tab(),
-                                        KeyCode::BackTab => self.previous_tab(),
-                                        KeyCode::Char('v') => self.cycle_view_mode(),
-                                        KeyCode::Char('s') => self.cycle_sort(),
-                                        KeyCode::Char('r') => self.reverse_sort(),
-                                        KeyCode::Up => self.previous_item(),
-                                        KeyCode::Down => self.next_item(),
-                                        KeyCode::Left => self.previous_column(),
-                                        KeyCode::Right => self.next_column(),
-                                        KeyCode::Enter => self.handle_enter(),
-                                        KeyCode::Char('c') => self.cycle_chart_mode(),
-                                        KeyCode::Char('m') => self.toggle_mouse(),
-                                        KeyCode::Char('+') => self.increase_chart_count(),
-                                        KeyCode::Char('-') => self.decrease_chart_count(),
-                                        _ => {}
+                                InputMode::Normal => match key.code {
+                                    KeyCode::Char('q') | KeyCode::Esc => {
+                                        self.should_quit = true;
                                     }
-                                }
-                                InputMode::EditingApiKey => {
-                                    match key.code {
-                                        KeyCode::Enter => {
-                                            self.ai_api_key = self.input_buffer.clone();
-                                            self.input_buffer.clear();
-                                            self.input_mode = InputMode::Normal;
-                                        }
-                                        KeyCode::Esc => {
-                                            self.input_buffer.clear();
-                                            self.input_mode = InputMode::Normal;
-                                        }
-                                        KeyCode::Char(c) => {
-                                            self.input_buffer.push(c);
-                                        }
-                                        KeyCode::Backspace => {
-                                            self.input_buffer.pop();
-                                        }
-                                        _ => {}
+                                    KeyCode::Char('h') | KeyCode::F(1) => {
+                                        self.show_help = !self.show_help;
                                     }
-                                }
-                                InputMode::EditingModel => {
-                                    match key.code {
-                                        KeyCode::Enter => {
-                                            if self.ai_model_index < self.ai_models.len() {
-                                                self.ai_model = self.ai_models[self.ai_model_index].clone();
-                                            }
-                                            self.input_mode = InputMode::Normal;
-                                        }
-                                        KeyCode::Esc => {
-                                            self.input_mode = InputMode::Normal;
-                                        }
-                                        KeyCode::Up => {
-                                            if self.ai_model_index > 0 {
-                                                self.ai_model_index -= 1;
-                                            }
-                                        }
-                                        KeyCode::Down => {
-                                            if self.ai_model_index < self.ai_models.len() - 1 {
-                                                self.ai_model_index += 1;
-                                            }
-                                        }
-                                        _ => {}
+                                    KeyCode::Char('1') => self.current_tab = TabIndex::Dashboard,
+                                    KeyCode::Char('2') => self.current_tab = TabIndex::Analytics,
+                                    KeyCode::Char('3') => self.current_tab = TabIndex::Settings,
+                                    KeyCode::Tab => self.next_tab(),
+                                    KeyCode::BackTab => self.previous_tab(),
+                                    KeyCode::Char('v') => self.cycle_view_mode(),
+                                    KeyCode::Char('s') => self.cycle_sort(),
+                                    KeyCode::Char('r') => self.reverse_sort(),
+                                    KeyCode::Up => self.previous_item(),
+                                    KeyCode::Down => self.next_item(),
+                                    KeyCode::Left => self.previous_column(),
+                                    KeyCode::Right => self.next_column(),
+                                    KeyCode::Enter => self.handle_enter(),
+                                    KeyCode::Char('c') => self.cycle_chart_mode(),
+                                    KeyCode::Char('m') => self.toggle_mouse(),
+                                    KeyCode::Char('+') => self.increase_chart_count(),
+                                    KeyCode::Char('-') => self.decrease_chart_count(),
+                                    _ => {}
+                                },
+                                InputMode::EditingApiKey => match key.code {
+                                    KeyCode::Enter => {
+                                        self.ai_api_key = self.input_buffer.clone();
+                                        self.input_buffer.clear();
+                                        self.input_mode = InputMode::Normal;
                                     }
-                                }
+                                    KeyCode::Esc => {
+                                        self.input_buffer.clear();
+                                        self.input_mode = InputMode::Normal;
+                                    }
+                                    KeyCode::Char(c) => {
+                                        self.input_buffer.push(c);
+                                    }
+                                    KeyCode::Backspace => {
+                                        self.input_buffer.pop();
+                                    }
+                                    _ => {}
+                                },
+                                InputMode::EditingModel => match key.code {
+                                    KeyCode::Enter => {
+                                        if self.ai_model_index < self.ai_models.len() {
+                                            self.ai_model =
+                                                self.ai_models[self.ai_model_index].clone();
+                                        }
+                                        self.input_mode = InputMode::Normal;
+                                    }
+                                    KeyCode::Esc => {
+                                        self.input_mode = InputMode::Normal;
+                                    }
+                                    KeyCode::Up => {
+                                        if self.ai_model_index > 0 {
+                                            self.ai_model_index -= 1;
+                                        }
+                                    }
+                                    KeyCode::Down => {
+                                        if self.ai_model_index < self.ai_models.len() - 1 {
+                                            self.ai_model_index += 1;
+                                        }
+                                    }
+                                    _ => {}
+                                },
                             }
                         }
                     }
@@ -394,8 +392,8 @@ impl TuiApp {
     }
 
     fn render_multi_charts(&mut self, f: &mut Frame, area: Rect) {
-        let chart_count = self.active_charts.min(4).max(1);
-        
+        let chart_count = self.active_charts.clamp(1, 4);
+
         match chart_count {
             1 => {
                 self.render_single_chart(f, area, 0);
@@ -405,7 +403,7 @@ impl TuiApp {
                     .direction(Direction::Horizontal)
                     .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
                     .split(area);
-                
+
                 self.render_single_chart(f, chunks[0], 0);
                 self.render_single_chart(f, chunks[1], 1);
             }
@@ -414,14 +412,14 @@ impl TuiApp {
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
                     .split(area);
-                
+
                 self.render_single_chart(f, main_chunks[0], 0);
-                
+
                 let bottom_chunks = Layout::default()
                     .direction(Direction::Horizontal)
                     .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
                     .split(main_chunks[1]);
-                
+
                 self.render_single_chart(f, bottom_chunks[0], 1);
                 self.render_single_chart(f, bottom_chunks[1], 2);
             }
@@ -430,17 +428,17 @@ impl TuiApp {
                     .direction(Direction::Vertical)
                     .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
                     .split(area);
-                
+
                 let top_chunks = Layout::default()
                     .direction(Direction::Horizontal)
                     .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
                     .split(main_chunks[0]);
-                
+
                 let bottom_chunks = Layout::default()
                     .direction(Direction::Horizontal)
                     .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
                     .split(main_chunks[1]);
-                
+
                 self.render_single_chart(f, top_chunks[0], 0);
                 self.render_single_chart(f, top_chunks[1], 1);
                 self.render_single_chart(f, bottom_chunks[0], 2);
@@ -462,7 +460,7 @@ impl TuiApp {
             ChartMode::Sparkline => self.render_sparkline_chart(f, area),
         }
     }
-        
+
     fn render_total_stats(&self, f: &mut Frame, area: Rect) {
         let total_time = self.tracker.get_total_time();
         let total_activities = self.tracker.get_activities().len();
@@ -586,60 +584,6 @@ impl TuiApp {
         f.render_widget(paragraph, area);
     }
 
-    fn render_top_apps(&mut self, f: &mut Frame, area: Rect, limit: usize) {
-        let stats = self.tracker.get_statistics();
-        let mut app_stats: HashMap<String, u64> = HashMap::new();
-
-        // 按应用程序聚合统计
-        for (key, duration) in stats {
-            let app_name = key.split(" - ").next().unwrap_or("Unknown").to_string();
-            *app_stats.entry(app_name).or_insert(0) += duration;
-        }
-
-        let mut sorted_apps: Vec<_> = app_stats.iter().collect();
-        sorted_apps.sort_by(|a, b| b.1.cmp(a.1));
-
-        let items: Vec<ListItem> = sorted_apps
-            .iter()
-            .take(limit)
-            .enumerate()
-            .map(|(i, (app_name, duration))| {
-                let hours = *duration / 3600;
-                let minutes = (*duration % 3600) / 60;
-                let seconds = *duration % 60;
-
-                let color = match i {
-                    0 => Color::Yellow,
-                    1 => Color::Green,
-                    2 => Color::Cyan,
-                    _ => Color::White,
-                };
-
-                ListItem::new(Line::from(vec![
-                    Span::styled(format!("{}. ", i + 1), Style::default().fg(Color::Gray)),
-                    Span::styled(
-                        (*app_name).clone(),
-                        Style::default().fg(color).add_modifier(Modifier::BOLD),
-                    ),
-                    Span::styled(
-                        format!(" - {}h {}m {}s", hours, minutes, seconds),
-                        Style::default().fg(Color::Gray),
-                    ),
-                ]))
-            })
-            .collect();
-
-        let list = List::new(items)
-            .block(
-                Block::default()
-                    .borders(Borders::ALL)
-                    .title(format!("最常用应用 (前{})", limit)),
-            )
-            .highlight_style(Style::default().bg(Color::DarkGray));
-
-        f.render_stateful_widget(list, area, &mut self.list_state);
-    }
-
     fn render_applications_table(&mut self, f: &mut Frame, area: Rect) {
         let stats = self.tracker.get_statistics();
         let mut app_stats: HashMap<String, u64> = HashMap::new();
@@ -661,27 +605,42 @@ impl TuiApp {
         match (self.sort_by, self.sort_order) {
             (SortBy::Duration, SortOrder::Descending) => {
                 sortable_apps.sort_by(|a, b| {
-                    b.item.1.cmp(a.item.1).then_with(|| a.original_index.cmp(&b.original_index))
+                    b.item
+                        .1
+                        .cmp(a.item.1)
+                        .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
             (SortBy::Duration, SortOrder::Ascending) => {
                 sortable_apps.sort_by(|a, b| {
-                    a.item.1.cmp(b.item.1).then_with(|| a.original_index.cmp(&b.original_index))
+                    a.item
+                        .1
+                        .cmp(b.item.1)
+                        .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
             (SortBy::AppName, SortOrder::Descending) => {
                 sortable_apps.sort_by(|a, b| {
-                    b.item.0.cmp(a.item.0).then_with(|| a.original_index.cmp(&b.original_index))
+                    b.item
+                        .0
+                        .cmp(a.item.0)
+                        .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
             (SortBy::AppName, SortOrder::Ascending) => {
                 sortable_apps.sort_by(|a, b| {
-                    a.item.0.cmp(b.item.0).then_with(|| a.original_index.cmp(&b.original_index))
+                    a.item
+                        .0
+                        .cmp(b.item.0)
+                        .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
             _ => {
                 sortable_apps.sort_by(|a, b| {
-                    b.item.1.cmp(a.item.1).then_with(|| a.original_index.cmp(&b.original_index))
+                    b.item
+                        .1
+                        .cmp(a.item.1)
+                        .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
         }
@@ -698,7 +657,10 @@ impl TuiApp {
                 Row::new(vec![
                     Cell::from(app_name.as_str()),
                     Cell::from(format!("{}h {}m {}s", hours, minutes, seconds)),
-                    Cell::from(format!("{:.1}%", (*duration * 100) as f64 / total_time as f64)),
+                    Cell::from(format!(
+                        "{:.1}%",
+                        (*duration * 100) as f64 / total_time as f64
+                    )),
                 ])
             })
             .collect();
@@ -732,7 +694,11 @@ impl TuiApp {
 
         let table = Table::new(
             rows,
-            [Constraint::Percentage(40), Constraint::Percentage(30), Constraint::Percentage(30)],
+            [
+                Constraint::Percentage(40),
+                Constraint::Percentage(30),
+                Constraint::Percentage(30),
+            ],
         )
         .header(header_row)
         .block(Block::default().borders(Borders::ALL).title(format!(
@@ -772,27 +738,42 @@ impl TuiApp {
         match (self.sort_by, self.sort_order) {
             (SortBy::Duration, SortOrder::Descending) => {
                 sortable_windows.sort_by(|a, b| {
-                    b.item.1.cmp(a.item.1).then_with(|| a.original_index.cmp(&b.original_index))
+                    b.item
+                        .1
+                        .cmp(a.item.1)
+                        .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
             (SortBy::Duration, SortOrder::Ascending) => {
                 sortable_windows.sort_by(|a, b| {
-                    a.item.1.cmp(b.item.1).then_with(|| a.original_index.cmp(&b.original_index))
+                    a.item
+                        .1
+                        .cmp(b.item.1)
+                        .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
             (SortBy::AppName, SortOrder::Descending) => {
                 sortable_windows.sort_by(|a, b| {
-                    b.item.0.cmp(a.item.0).then_with(|| a.original_index.cmp(&b.original_index))
+                    b.item
+                        .0
+                        .cmp(a.item.0)
+                        .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
             (SortBy::AppName, SortOrder::Ascending) => {
                 sortable_windows.sort_by(|a, b| {
-                    a.item.0.cmp(b.item.0).then_with(|| a.original_index.cmp(&b.original_index))
+                    a.item
+                        .0
+                        .cmp(b.item.0)
+                        .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
             _ => {
                 sortable_windows.sort_by(|a, b| {
-                    b.item.1.cmp(a.item.1).then_with(|| a.original_index.cmp(&b.original_index))
+                    b.item
+                        .1
+                        .cmp(a.item.1)
+                        .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
         }
@@ -809,7 +790,10 @@ impl TuiApp {
                 Row::new(vec![
                     Cell::from(window_name.as_str()),
                     Cell::from(format!("{}h {}m {}s", hours, minutes, seconds)),
-                    Cell::from(format!("{:.1}%", (*duration * 100) as f64 / total_time as f64)),
+                    Cell::from(format!(
+                        "{:.1}%",
+                        (*duration * 100) as f64 / total_time as f64
+                    )),
                 ])
             })
             .collect();
@@ -843,7 +827,11 @@ impl TuiApp {
 
         let table = Table::new(
             rows,
-            [Constraint::Percentage(40), Constraint::Percentage(30), Constraint::Percentage(30)],
+            [
+                Constraint::Percentage(40),
+                Constraint::Percentage(30),
+                Constraint::Percentage(30),
+            ],
         )
         .header(header_row)
         .block(Block::default().borders(Borders::ALL).title(format!(
@@ -893,11 +881,13 @@ impl TuiApp {
         sorted_data.truncate(10);
 
         let total_time = self.tracker.get_total_time().max(1);
-        
+
         let mut lines = vec![
             Line::from(vec![Span::styled(
                 format!("{} 分布", title),
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
             )]),
             Line::from(""),
         ];
@@ -914,18 +904,21 @@ impl TuiApp {
                 6 => Color::White,
                 _ => Color::Gray,
             };
-            
+
             let hours = **duration / 3600;
             let minutes = (**duration % 3600) / 60;
-            
+
             let bar_length = (percentage / 100.0 * 30.0) as usize;
             let bar = "█".repeat(bar_length);
-            
+
             lines.push(Line::from(vec![
                 Span::styled(format!("{:2}. ", i + 1), Style::default().fg(Color::Gray)),
                 Span::styled(format!("{:<20}", name), Style::default().fg(Color::White)),
                 Span::styled(format!("{:<30}", bar), Style::default().fg(color)),
-                Span::styled(format!(" {}h{}m ({:.1}%)", hours, minutes, percentage), Style::default().fg(Color::Gray)),
+                Span::styled(
+                    format!(" {}h{}m ({:.1}%)", hours, minutes, percentage),
+                    Style::default().fg(Color::Gray),
+                ),
             ]));
         }
 
@@ -945,7 +938,7 @@ impl TuiApp {
                 (name.clone(), total_duration)
             })
             .collect();
-        
+
         app_durations.sort_by(|a, b| b.1.cmp(&a.1));
         app_durations.truncate(10);
 
@@ -969,11 +962,12 @@ impl TuiApp {
         let activities = self.tracker.get_activities_by_app();
         if let Some((app_name, records)) = activities.iter().next() {
             let app_duration: u64 = records.iter().map(|r| r.duration).sum();
-            let total_time: u64 = activities.iter()
+            let total_time: u64 = activities
+                .iter()
                 .flat_map(|(_, records)| records.iter())
                 .map(|r| r.duration)
                 .sum();
-            
+
             let ratio = if total_time > 0 {
                 (app_duration as f64 / total_time as f64) * 100.0
             } else {
@@ -984,10 +978,11 @@ impl TuiApp {
             let minutes = (app_duration % 3600) / 60;
 
             let gauge = Gauge::default()
-                .block(Block::default().borders(Borders::ALL).title(format!(
-                    "最常用应用: {} ({}h{}m)",
-                    app_name, hours, minutes
-                )))
+                .block(
+                    Block::default()
+                        .borders(Borders::ALL)
+                        .title(format!("最常用应用: {} ({}h{}m)", app_name, hours, minutes)),
+                )
                 .gauge_style(Style::default().fg(Color::Green))
                 .percent(ratio as u16)
                 .label(format!("{:.1}%", ratio));
@@ -1000,14 +995,18 @@ impl TuiApp {
         // 生成24小时的活动数据
         let mut hourly_data = vec![0u64; 24];
         let activities = self.tracker.get_recent_activities(1000);
-        
+
         for activity in activities {
             let hour = activity.start_time.with_timezone(&Local).hour() as usize;
             hourly_data[hour] += activity.duration;
         }
 
         let sparkline = Sparkline::default()
-            .block(Block::default().borders(Borders::ALL).title("24小时活动趋势"))
+            .block(
+                Block::default()
+                    .borders(Borders::ALL)
+                    .title("24小时活动趋势"),
+            )
             .data(&hourly_data)
             .style(Style::default().fg(Color::Cyan));
 
@@ -1028,35 +1027,47 @@ impl TuiApp {
 
         match (self.sort_by, self.sort_order) {
             (SortBy::StartTime, SortOrder::Descending) => sortable_activities.sort_by(|a, b| {
-                b.item.start_time.cmp(&a.item.start_time)
+                b.item
+                    .start_time
+                    .cmp(&a.item.start_time)
                     .then_with(|| a.original_index.cmp(&b.original_index))
             }),
             (SortBy::StartTime, SortOrder::Ascending) => sortable_activities.sort_by(|a, b| {
-                a.item.start_time.cmp(&b.item.start_time)
+                a.item
+                    .start_time
+                    .cmp(&b.item.start_time)
                     .then_with(|| a.original_index.cmp(&b.original_index))
             }),
             (SortBy::Duration, SortOrder::Descending) => sortable_activities.sort_by(|a, b| {
-                b.item.duration.cmp(&a.item.duration)
+                b.item
+                    .duration
+                    .cmp(&a.item.duration)
                     .then_with(|| a.original_index.cmp(&b.original_index))
             }),
             (SortBy::Duration, SortOrder::Ascending) => sortable_activities.sort_by(|a, b| {
-                a.item.duration.cmp(&b.item.duration)
+                a.item
+                    .duration
+                    .cmp(&b.item.duration)
                     .then_with(|| a.original_index.cmp(&b.original_index))
             }),
             (SortBy::AppName, SortOrder::Descending) => sortable_activities.sort_by(|a, b| {
-                b.item.app_name.cmp(&a.item.app_name)
+                b.item
+                    .app_name
+                    .cmp(&a.item.app_name)
                     .then_with(|| a.original_index.cmp(&b.original_index))
             }),
             (SortBy::AppName, SortOrder::Ascending) => sortable_activities.sort_by(|a, b| {
-                a.item.app_name.cmp(&b.item.app_name)
+                a.item
+                    .app_name
+                    .cmp(&b.item.app_name)
                     .then_with(|| a.original_index.cmp(&b.original_index))
             }),
-            _ => {
-                sortable_activities.sort_by(|a, b| {
-                    b.item.start_time.cmp(&a.item.start_time)
-                        .then_with(|| a.original_index.cmp(&b.original_index))
-                })
-            }
+            _ => sortable_activities.sort_by(|a, b| {
+                b.item
+                    .start_time
+                    .cmp(&a.item.start_time)
+                    .then_with(|| a.original_index.cmp(&b.original_index))
+            }),
         }
 
         let rows: Vec<Row> = sortable_activities
@@ -1506,7 +1517,11 @@ impl TuiApp {
     }
 
     fn cycle_chart_mode(&mut self) {
-        let current_index = self.chart_modes.iter().position(|&mode| mode == self.chart_mode).unwrap_or(0);
+        let current_index = self
+            .chart_modes
+            .iter()
+            .position(|&mode| mode == self.chart_mode)
+            .unwrap_or(0);
         let next_index = (current_index + 1) % self.chart_modes.len();
         self.chart_mode = self.chart_modes[next_index];
     }
@@ -1560,7 +1575,7 @@ impl TuiApp {
 
     fn handle_mouse_event(&mut self, mouse: MouseEvent) {
         self.mouse_position = (mouse.column, mouse.row);
-        
+
         match mouse.kind {
             MouseEventKind::Down(MouseButton::Left) => {
                 // 处理标签页点击
@@ -1575,9 +1590,12 @@ impl TuiApp {
                     }
                     self.reset_selection();
                 }
-                
+
                 // 处理表格头部点击进行排序
-                if mouse.row == 2 && (self.current_tab == TabIndex::Dashboard || self.current_tab == TabIndex::Analytics) {
+                if mouse.row == 2
+                    && (self.current_tab == TabIndex::Dashboard
+                        || self.current_tab == TabIndex::Analytics)
+                {
                     // 表格头部点击排序
                     let column = mouse.column / 20; // 假设每列宽度为20
                     match self.view_mode {
