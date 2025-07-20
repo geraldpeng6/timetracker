@@ -5,7 +5,7 @@
 ## 🤝 如何贡献
 
 ### 报告 Bug
-1. 在 [Issues](https://github.com/yourusername/timetracker/issues) 中搜索是否已有相关问题
+1. 在 [Issues](https://github.com/geraldpeng6/timetracker/issues) 中搜索是否已有相关问题
 2. 如果没有，创建新的 Issue，包含：
    - 详细的问题描述
    - 重现步骤
@@ -25,12 +25,11 @@
 #### 开发环境设置
 ```bash
 # 1. Fork 项目到你的 GitHub 账户
-# 2. 克隆你的 fork
-git clone https://github.com/yourusername/timetracker.git
+# 2. 克隆你的 git clone https://github.com/geraldpeng6/timetracker.git
 cd timetracker
 
-# 3. 添加上游仓库
-git remote add upstream https://github.com/originalowner/timetracker.git
+# 添加上游仓库（如果你是从 fork 开发）
+git remote add upstream https://github.com/geraldpeng6/timetracker.git
 
 # 4. 安装 Rust（如果还没有）
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -159,7 +158,7 @@ perf record target/release/timetracker start
 
 ## 📞 联系方式
 
-- GitHub Issues: [项目 Issues](https://github.com/yourusername/timetracker/issues)
+- GitHub Issues: [项目 Issues](https://github.com/geraldpeng6/timetracker/issues)
 - 邮件: your.email@example.com
 
 ## 📄 许可证

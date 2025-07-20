@@ -1,24 +1,24 @@
 class Timetracker < Formula
   desc "Cross-platform CLI tool for tracking application window usage time"
-  homepage "https://github.com/yourusername/timetracker"
+  homepage "https://github.com/geraldpeng6/timetracker"
   version "0.2.0"
   
   on_macos do
     if Hardware::CPU.intel?
-      url "https://github.com/yourusername/timetracker/releases/download/v#{version}/timetracker-macos-x86_64"
+      url "https://github.com/geraldpeng6/timetracker/releases/download/v#{version}/timetracker-macos-x86_64"
       sha256 "REPLACE_WITH_ACTUAL_SHA256_FOR_INTEL_MAC"
     elsif Hardware::CPU.arm?
-      url "https://github.com/yourusername/timetracker/releases/download/v#{version}/timetracker-macos-aarch64"
+      url "https://github.com/geraldpeng6/timetracker/releases/download/v#{version}/timetracker-macos-aarch64"
       sha256 "REPLACE_WITH_ACTUAL_SHA256_FOR_ARM_MAC"
     end
   end
 
   on_linux do
     if Hardware::CPU.intel?
-      url "https://github.com/yourusername/timetracker/releases/download/v#{version}/timetracker-linux-x86_64"
-      sha256 "REPLACE_WITH_ACTUAL_SHA256_FOR_LINUX_INTEL"
+      url "https://github.com/geraldpeng6/timetracker/releases/download/v#{version}/timetracker-linux-x86_64"
+      sha256 "REPLACE_WITH_ACTUAL_SHA256_FOR_LINUX_X86_64"
     elsif Hardware::CPU.arm?
-      url "https://github.com/yourusername/timetracker/releases/download/v#{version}/timetracker-linux-aarch64"
+      url "https://github.com/geraldpeng6/timetracker/releases/download/v#{version}/timetracker-linux-aarch64"
       sha256 "REPLACE_WITH_ACTUAL_SHA256_FOR_LINUX_ARM"
     end
   end
@@ -40,7 +40,7 @@ class Timetracker < Formula
       2. Run 'timetracker start' to begin time tracking
       3. Run 'timetracker stats' to view statistics
       
-      For more information, visit: https://github.com/yourusername/timetracker
+      For more information, visit: https://github.com/geraldpeng6/timetracker
     EOS
   end
 end

@@ -20,13 +20,13 @@
 
 ```bash
 # 一键安装脚本
-curl -fsSL https://raw.githubusercontent.com/your-repo/timetracker/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/geraldpeng6/timetracker/main/install.sh | bash
 
 # 或使用 Cargo
 cargo install timetracker
 
 # 或从源码编译
-git clone https://github.com/your-repo/timetracker.git
+git clone https://github.com/geraldpeng6/timetracker.git
 cd timetracker
 cargo build --release
 ```

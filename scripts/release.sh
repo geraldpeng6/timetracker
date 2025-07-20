@@ -284,7 +284,7 @@ main() {
         echo -e "${GREEN}🎉 发布完成!${NC}"
         echo "版本 $new_version 已发布"
         echo "GitHub Actions 将自动构建和发布二进制文件"
-        echo "查看发布状态: https://github.com/yourusername/timetracker/actions"
+        echo "查看发布状态: https://github.com/geraldpeng6/timetracker/actions"
     fi
 }
 

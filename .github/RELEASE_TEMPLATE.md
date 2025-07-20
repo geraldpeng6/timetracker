@@ -16,16 +16,16 @@
 #### 一键安装
 ```bash
 # Linux/macOS
-curl -fsSL https://raw.githubusercontent.com/yourusername/timetracker/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/geraldpeng6/timetracker/main/install.sh | bash
 
 # Windows (PowerShell)
-iwr -useb https://raw.githubusercontent.com/yourusername/timetracker/main/install.ps1 | iex
+iwr -useb https://raw.githubusercontent.com/geraldpeng6/timetracker/main/install.ps1 | iex
 ```
 
 #### 包管理器
 ```bash
 # Homebrew
-brew install yourusername/timetracker/timetracker
+brew install geraldpeng6/timetracker/timetracker
 
 # Cargo
 cargo install timetracker
@@ -51,8 +51,8 @@ SHA256 校验和将在发布后更新
 ```
 
 ### 📝 完整更新日志
-查看完整的更改历史: [CHANGELOG.md](https://github.com/yourusername/timetracker/blob/main/CHANGELOG.md)
+查看完整的更改历史: [CHANGELOG.md](https://github.com/geraldpeng6/timetracker/blob/main/CHANGELOG.md)
 
 ---
 
-**首次使用？** 查看我们的 [快速开始指南](https://github.com/yourusername/timetracker#quick-start) 📚
+**首次使用？** 查看我们的 [快速开始指南](https://github.com/geraldpeng6/timetracker#quick-start) 📚

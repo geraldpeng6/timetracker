@@ -10,7 +10,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 # 项目信息
-$REPO = "yourusername/timetracker"
+$REPO = "geraldpeng6/timetracker"
 $BINARY_NAME = "timetracker.exe"
 
 # 颜色函数

@@ -17,7 +17,7 @@
 请通过以下方式之一报告安全问题：
 
 1. **GitHub Security Advisory**（推荐）
-   - 访问项目的 [Security](https://github.com/yourusername/timetracker/security) 页面
+   - 访问项目的 [Security](https://github.com/geraldpeng6/timetracker/security) 页面
    - 点击 "Report a vulnerability"
    - 填写详细信息
 
@@ -109,7 +109,7 @@ TimeTracker 需要以下系统权限：
 
 - **安全邮箱**：security@yourproject.com
 - **PGP 公钥**：[链接到公钥]
-- **GitHub Security**：https://github.com/yourusername/timetracker/security
+- **GitHub Security**：https://github.com/geraldpeng6/timetracker/security
 
 ---
 

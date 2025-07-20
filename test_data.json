@@ -1,0 +1,22 @@
+{
+  "activities": [
+    {
+      "app_name": "Trae",
+      "window_title": "Unknown Window",
+      "start_time": "2025-07-20T13:46:52.132037Z",
+      "end_time": "2025-07-20T13:49:52.262661Z",
+      "duration_seconds": 180,
+      "process_id": 1100
+    },
+    {
+      "app_name": "Active Application",
+      "window_title": "Active Window",
+      "start_time": "2025-07-20T13:49:52.263473Z",
+      "end_time": "2025-07-20T13:51:42.457721Z",
+      "duration_seconds": 110,
+      "process_id": 0
+    }
+  ],
+  "last_updated": "2025-07-20T13:51:42.457906Z",
+  "version": "0.2.0"
+}

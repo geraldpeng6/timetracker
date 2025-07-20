@@ -13,7 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # 项目信息
-REPO="yourusername/timetracker"
+REPO="geraldpeng6/timetracker"
 BINARY_NAME="timetracker"
 
 # 检测操作系统和架构

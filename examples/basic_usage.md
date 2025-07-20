@@ -4,10 +4,10 @@
 
 ```bash
 # 使用安装脚本
-curl -sSL https://raw.githubusercontent.com/your-repo/timetracker/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/geraldpeng6/timetracker/main/install.sh | bash
 
 # 或者手动编译
-git clone https://github.com/your-repo/timetracker.git
+git clone https://github.com/geraldpeng6/timetracker.git
 cd timetracker
 cargo build --release
 ```

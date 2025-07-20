@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
   - name: 📚 文档和帮助
-    url: https://github.com/yourusername/timetracker/blob/main/README.md
+    url: https://github.com/geraldpeng6/timetracker/blob/main/README.md
     about: 查看项目文档和使用说明
   - name: 💬 讨论和问题
-    url: https://github.com/yourusername/timetracker/discussions
+    url: https://github.com/geraldpeng6/timetracker/discussions
     about: 提问、分享想法或与社区讨论
   - name: 🔒 安全问题
-    url: https://github.com/yourusername/timetracker/security/advisories/new
+    url: https://github.com/geraldpeng6/timetracker/security/advisories/new
     about: 私密报告安全漏洞
