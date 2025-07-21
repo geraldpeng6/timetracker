@@ -608,6 +608,7 @@ impl TuiApp {
                     b.item
                         .1
                         .cmp(a.item.1)
+                        .then_with(|| a.item.0.cmp(b.item.0)) // 时间相同时按名称排序
                         .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
@@ -616,6 +617,7 @@ impl TuiApp {
                     a.item
                         .1
                         .cmp(b.item.1)
+                        .then_with(|| a.item.0.cmp(b.item.0)) // 时间相同时按名称排序
                         .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
@@ -624,6 +626,7 @@ impl TuiApp {
                     b.item
                         .0
                         .cmp(a.item.0)
+                        .then_with(|| b.item.1.cmp(a.item.1)) // 名称相同时按时间排序
                         .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
@@ -632,14 +635,17 @@ impl TuiApp {
                     a.item
                         .0
                         .cmp(b.item.0)
+                        .then_with(|| b.item.1.cmp(a.item.1)) // 名称相同时按时间排序
                         .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
             _ => {
+                // 默认按时间降序排序
                 sortable_apps.sort_by(|a, b| {
                     b.item
                         .1
                         .cmp(a.item.1)
+                        .then_with(|| a.item.0.cmp(b.item.0)) // 时间相同时按名称排序
                         .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
@@ -741,6 +747,7 @@ impl TuiApp {
                     b.item
                         .1
                         .cmp(a.item.1)
+                        .then_with(|| a.item.0.cmp(b.item.0)) // 时间相同时按名称排序
                         .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
@@ -749,14 +756,35 @@ impl TuiApp {
                     a.item
                         .1
                         .cmp(b.item.1)
+                        .then_with(|| a.item.0.cmp(b.item.0)) // 时间相同时按名称排序
                         .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
+            (SortBy::WindowTitle, SortOrder::Descending) => {
+                sortable_windows.sort_by(|a, b| {
+                    b.item
+                        .0
+                        .cmp(a.item.0)
+                        .then_with(|| b.item.1.cmp(a.item.1)) // 名称相同时按时间排序
+                        .then_with(|| a.original_index.cmp(&b.original_index))
+                });
+            }
+            (SortBy::WindowTitle, SortOrder::Ascending) => {
+                sortable_windows.sort_by(|a, b| {
+                    a.item
+                        .0
+                        .cmp(b.item.0)
+                        .then_with(|| b.item.1.cmp(a.item.1)) // 名称相同时按时间排序
+                        .then_with(|| a.original_index.cmp(&b.original_index))
+                });
+            }
+            // 兼容其他排序类型，默认按时间排序
             (SortBy::AppName, SortOrder::Descending) => {
                 sortable_windows.sort_by(|a, b| {
                     b.item
                         .0
                         .cmp(a.item.0)
+                        .then_with(|| b.item.1.cmp(a.item.1))
                         .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
@@ -765,14 +793,17 @@ impl TuiApp {
                     a.item
                         .0
                         .cmp(b.item.0)
+                        .then_with(|| b.item.1.cmp(a.item.1))
                         .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
             _ => {
+                // 默认按时间降序排序
                 sortable_windows.sort_by(|a, b| {
                     b.item
                         .1
                         .cmp(a.item.1)
+                        .then_with(|| a.item.0.cmp(b.item.0))
                         .then_with(|| a.original_index.cmp(&b.original_index))
                 });
             }
@@ -838,7 +869,8 @@ impl TuiApp {
             "窗口统计 (按{} {} 排序)",
             match self.sort_by {
                 SortBy::Duration => "使用时间",
-                SortBy::AppName => "窗口名称",
+                SortBy::WindowTitle => "窗口名称",
+                SortBy::AppName => "窗口名称", // 在窗口视图中，AppName也显示为窗口名称
                 _ => "使用时间",
             },
             sort_indicator
@@ -1654,6 +1686,8 @@ impl TuiApp {
                 _ => SortBy::StartTime,
             },
         };
+        // 重置选择状态以避免索引越界
+        self.reset_selection();
     }
 
     fn reverse_sort(&mut self) {
@@ -1661,6 +1695,8 @@ impl TuiApp {
             SortOrder::Ascending => SortOrder::Descending,
             SortOrder::Descending => SortOrder::Ascending,
         };
+        // 重置选择状态以避免索引越界
+        self.reset_selection();
     }
 
     fn next_item(&mut self) {

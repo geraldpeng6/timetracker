@@ -47,6 +47,12 @@ fmt:
 	@echo "✨ 格式化代码..."
 	cargo fmt
 
+# 安装 Git pre-commit hooks
+setup-hooks:
+	@echo "🔧 安装 pre-commit hooks..."
+	@chmod +x scripts/install-hooks.sh
+	@./scripts/install-hooks.sh
+
 # 显示帮助
 help:
 	@echo "TimeTracker 构建命令:"
@@ -58,4 +64,5 @@ help:
 	@echo "  make test         - 运行测试"
 	@echo "  make check        - 检查代码"
 	@echo "  make fmt          - 格式化代码"
+	@echo "  make setup-hooks  - 安装 pre-commit hooks"
 	@echo "  make help         - 显示此帮助"
