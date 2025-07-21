@@ -12,6 +12,8 @@ Cargo.lock
 *.swp
 *.swo
 *~
+.fleet/
+.helix/
 
 # OS
 .DS_Store
@@ -21,23 +23,32 @@ Cargo.lock
 .Trashes
 ehthumbs.db
 Thumbs.db
+desktop.ini
 
-# Application data
+# Application data - 隐私保护
 timetracker_data.json
 *.log
+*.json.bak
+exported_*.json
+exported_*.csv
+test_*.json
+test_*.csv
 
 # Build artifacts
 /dist/
 /release/
+/build/
 
 # Temporary files
 *.tmp
 *.temp
+*.cache
 
 # Environment files
 .env
 .env.local
 .env.production
+.env.development
 
 # Documentation build
 /docs/_build/
@@ -49,3 +60,27 @@ timetracker_data.json
 # Backup files
 *.bak
 *.backup
+
+# 个人配置和敏感信息
+config.local.json
+settings.local.json
+*.key
+*.pem
+*.p12
+*.pfx
+
+# 用户数据和统计信息
+user_data/
+statistics/
+reports/
+analytics/
+
+# 调试和开发文件
+debug.log
+trace.log
+*.debug
+core.*
+
+# 系统特定文件
+.fuse_hidden*
+.nfs*

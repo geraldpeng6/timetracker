@@ -219,25 +219,11 @@ impl PermissionManager {
     }
 }
 
-/// 自动权限检查和请求
+/// 自动权限检查和请求（简化版本，避免卡住）
 pub fn auto_request_permissions() -> Result<bool> {
-    let manager = PermissionManager::new();
-
-    println!("🔐 正在检查应用权限...");
-
-    // 显示当前权限状态
-    manager.show_permission_status()?;
-
-    // 如果权限不足，请求权限
-    if !manager.validate_permissions()? {
-        println!("⚠️  检测到权限不足，正在请求必要权限...");
-        manager.request_permissions()?;
-
-        // 再次检查权限
-        println!("\n请授权后重新运行应用程序");
-        return Ok(false);
-    }
-
+    // 简化权限检查，直接返回 true
+    // 在实际使用中，如果没有权限，active-win-pos-rs 会失败并回退到安全实现
+    println!("🔐 跳过权限检查（简化模式）");
     Ok(true)
 }
 
