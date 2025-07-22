@@ -2,6 +2,7 @@
 // 使用Accessibility API和AppleScript获取窗口信息
 
 use super::*;
+use crate::core::platform::correct_app_name;
 use anyhow::Result;
 use std::process::Command;
 use std::time::{Duration, SystemTime};
@@ -168,20 +169,23 @@ impl MacOSMonitor {
             .filter(|s| !s.is_empty())
             .map(|s| s.to_string());
 
+        // 修正应用名称，提取真实的应用名称
+        let corrected_app_name = correct_app_name(&app_name, &window_title, process_id);
+
         // 计算置信度
-        let confidence = if !app_name.is_empty() && !window_title.is_empty() && bundle_id.is_some()
+        let confidence = if !corrected_app_name.is_empty() && !window_title.is_empty() && bundle_id.is_some()
         {
             0.95
-        } else if !app_name.is_empty() && !window_title.is_empty() {
+        } else if !corrected_app_name.is_empty() && !window_title.is_empty() {
             0.85
-        } else if !app_name.is_empty() {
+        } else if !corrected_app_name.is_empty() {
             0.7
         } else {
             0.5
         };
 
         Ok(EnhancedWindowInfo {
-            app_name,
+            app_name: corrected_app_name,
             window_title,
             process_id,
             app_path,

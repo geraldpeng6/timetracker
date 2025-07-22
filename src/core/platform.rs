@@ -24,7 +24,7 @@ impl WindowInfo {
 }
 
 /// 修正应用名称，将通用进程名映射为实际应用名
-fn correct_app_name(app_name: &str, window_title: &str, process_id: u32) -> String {
+pub fn correct_app_name(app_name: &str, window_title: &str, process_id: u32) -> String {
     // 首先尝试通过进程路径提取真实应用名称
     if let Some(extracted_name) = identify_app_by_process(process_id) {
         // 如果提取出的名称不是通用进程名，直接返回
@@ -131,7 +131,7 @@ fn correct_app_name(app_name: &str, window_title: &str, process_id: u32) -> Stri
 }
 
 /// 判断是否是通用进程名（需要进一步识别的进程名）
-fn is_generic_process_name(name: &str) -> bool {
+pub fn is_generic_process_name(name: &str) -> bool {
     let generic_names = [
         "electron", "java", "python", "node", "chrome", "firefox", "stable", "main", "app", "bin",
         "exec", "launcher",
@@ -144,7 +144,7 @@ fn is_generic_process_name(name: &str) -> bool {
 }
 
 /// 从应用路径中提取应用名称
-fn extract_app_name_from_path(path: &str) -> Option<String> {
+pub fn extract_app_name_from_path(path: &str) -> Option<String> {
     if path.is_empty() {
         return None;
     }
@@ -212,7 +212,7 @@ fn extract_app_name_from_path(path: &str) -> Option<String> {
 }
 
 /// 通过进程ID识别真实应用名称
-fn identify_app_by_process(process_id: u32) -> Option<String> {
+pub fn identify_app_by_process(process_id: u32) -> Option<String> {
     use sysinfo::{Pid, ProcessesToUpdate, System};
 
     let mut system = System::new();
@@ -423,7 +423,10 @@ fn get_active_window_legacy() -> Result<WindowInfo> {
                 ));
             }
 
-            Ok(WindowInfo::new(app_name, window_title, process_id))
+            // 修正应用名称，提取真实的应用名称
+            let corrected_app_name = correct_app_name(&app_name, &window_title, process_id);
+
+            Ok(WindowInfo::new(corrected_app_name, window_title, process_id))
         }
         Err(_) => {
             // 如果 active-win-pos-rs 失败，回退到平台特定的实现

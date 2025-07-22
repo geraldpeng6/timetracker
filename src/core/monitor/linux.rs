@@ -2,6 +2,8 @@
 // 使用X11/Wayland协议获取窗口信息
 
 use super::*;
+#[cfg(target_os = "linux")]
+use crate::core::platform::correct_app_name;
 use anyhow::Result;
 #[cfg(target_os = "linux")]
 use std::process::Command;
@@ -316,6 +318,9 @@ impl EnhancedWindowMonitor for LinuxMonitor {
 
         let (app_name, app_path) = self.get_process_info(pid);
 
+        // 修正应用名称，提取真实的应用名称
+        let corrected_app_name = correct_app_name(&app_name, &title, pid);
+
         // 计算置信度
         let confidence = match self.display_server {
             DisplayServer::X11 if geometry.is_some() => 0.9,
@@ -325,7 +330,7 @@ impl EnhancedWindowMonitor for LinuxMonitor {
         };
 
         let window_info = EnhancedWindowInfo {
-            app_name,
+            app_name: corrected_app_name,
             window_title: title,
             process_id: pid,
             app_path,

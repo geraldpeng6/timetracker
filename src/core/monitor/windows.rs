@@ -2,6 +2,8 @@
 // 使用Win32 API获取准确的窗口信息
 
 use super::*;
+#[cfg(target_os = "windows")]
+use crate::core::platform::correct_app_name;
 use anyhow::Result;
 #[cfg(target_os = "windows")]
 use std::time::{Duration, SystemTime};
@@ -151,20 +153,23 @@ impl EnhancedWindowMonitor for WindowsMonitor {
                 process_name
             };
 
+            // 修正应用名称，提取真实的应用名称
+            let corrected_app_name = correct_app_name(&app_name, &window_title, process_id);
+
             // 获取窗口几何信息
             let geometry = self.get_window_geometry(hwnd);
 
             // 计算置信度
-            let confidence = if !app_name.is_empty() && !window_title.is_empty() {
+            let confidence = if !corrected_app_name.is_empty() && !window_title.is_empty() {
                 0.95
-            } else if !app_name.is_empty() {
+            } else if !corrected_app_name.is_empty() {
                 0.8
             } else {
                 0.5
             };
 
             let window_info = EnhancedWindowInfo {
-                app_name,
+                app_name: corrected_app_name,
                 window_title,
                 process_id,
                 app_path,
