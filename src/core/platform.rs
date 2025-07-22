@@ -426,7 +426,11 @@ fn get_active_window_legacy() -> Result<WindowInfo> {
             // 修正应用名称，提取真实的应用名称
             let corrected_app_name = correct_app_name(&app_name, &window_title, process_id);
 
-            Ok(WindowInfo::new(corrected_app_name, window_title, process_id))
+            Ok(WindowInfo::new(
+                corrected_app_name,
+                window_title,
+                process_id,
+            ))
         }
         Err(_) => {
             // 如果 active-win-pos-rs 失败，回退到平台特定的实现

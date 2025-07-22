@@ -173,16 +173,16 @@ impl MacOSMonitor {
         let corrected_app_name = correct_app_name(&app_name, &window_title, process_id);
 
         // 计算置信度
-        let confidence = if !corrected_app_name.is_empty() && !window_title.is_empty() && bundle_id.is_some()
-        {
-            0.95
-        } else if !corrected_app_name.is_empty() && !window_title.is_empty() {
-            0.85
-        } else if !corrected_app_name.is_empty() {
-            0.7
-        } else {
-            0.5
-        };
+        let confidence =
+            if !corrected_app_name.is_empty() && !window_title.is_empty() && bundle_id.is_some() {
+                0.95
+            } else if !corrected_app_name.is_empty() && !window_title.is_empty() {
+                0.85
+            } else if !corrected_app_name.is_empty() {
+                0.7
+            } else {
+                0.5
+            };
 
         Ok(EnhancedWindowInfo {
             app_name: corrected_app_name,
