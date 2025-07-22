@@ -8,17 +8,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- GitHub Actions 自动化构建和发布
-- 多平台二进制文件支持 (Linux, macOS, Windows)
-- Docker 容器化支持
-- Homebrew 公式
-- DEB 包构建
-- 一键安装脚本 (Linux/macOS/Windows)
-- 自动化发布脚本
+- 🎯 **用户活跃度检测功能** - 智能检测用户是否处于活跃状态
+  - 自动检测用户闲置时间，闲置时不记录窗口活动
+  - 智能识别视频播放场景（看视频时即使闲置也记录）
+  - 支持自定义视频应用和网站列表
+  - 可配置的闲置超时时间和检测间隔
+  - 新增 `timetracker activity` 命令管理活跃度检测
+- 🚀 **完整部署系统** - 现代化的多平台部署解决方案
+  - 一键安装脚本 (Linux/macOS: `install-remote.sh`, Windows: `install.ps1`)
+  - 包管理器支持 (Homebrew, APT/DEB, RPM)
+  - Docker 容器化部署 (多架构镜像)
+  - Windows MSI 和 macOS PKG 安装器
+  - GitHub Actions 完全自动化 CI/CD
+  - 多平台二进制文件构建 (x86_64, ARM64)
+  - 容器注册表集成 (GitHub Container Registry)
+  - 自动化发布流程和版本管理
+  - 部署配置验证和测试脚本
 
 ### Changed
 - 更新依赖到最新版本
 - 改进安装文档和说明
+- 增强监控系统，集成活跃度检测功能
+- 扩展配置系统，支持活跃度检测配置
 
 ### Fixed
 - 修复 ratatui 升级后的兼容性问题

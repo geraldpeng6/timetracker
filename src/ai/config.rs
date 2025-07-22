@@ -56,6 +56,41 @@ pub struct AIConfig {
     pub retry_attempts: u32,
 }
 
+impl AIConfig {
+    /// 验证配置
+    pub fn validate(&self) -> Result<()> {
+        use crate::utils::validation::*;
+
+        // 验证当前模型是否存在
+        if !self.models.contains_key(&self.current_model) {
+            return Err(anyhow::anyhow!("当前模型 {} 不存在", self.current_model));
+        }
+
+        // 验证 API 密钥
+        for (_provider, key) in &self.api_keys {
+            if !key.is_empty() {
+                validate_api_key(key)?;
+            }
+        }
+
+        // 验证自定义端点
+        for (_, endpoint) in &self.custom_endpoints {
+            if !endpoint.is_empty() {
+                validate_url(endpoint)?;
+            }
+        }
+
+        // 验证模型配置
+        for (_, model_config) in &self.models {
+            validate_temperature(model_config.temperature)?;
+            validate_max_tokens(model_config.max_tokens)?;
+            validate_url(&model_config.api_url)?;
+        }
+
+        Ok(())
+    }
+}
+
 impl Default for AIConfig {
     fn default() -> Self {
         let mut models = HashMap::new();

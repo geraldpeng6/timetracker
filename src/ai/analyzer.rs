@@ -1,6 +1,6 @@
-use crate::ai_client::{AIMessage, AIRequest, UnifiedAIClient};
-use crate::ai_config::AIConfig;
-use crate::tracker::TimeTracker;
+use crate::ai::client::{AIMessage, AIRequest, UnifiedAIClient};
+use crate::ai::config::AIConfig;
+use crate::core::tracker::TimeTracker;
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

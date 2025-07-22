@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  timetracker:
+    build: .
+    image: timetracker:latest
+    container_name: timetracker
+    restart: unless-stopped
+    
+    # 环境变量
+    environment:
+      - RUST_LOG=info
+      - TIMETRACKER_DATA_DIR=/data
+    
+    # 数据卷
+    volumes:
+      - timetracker_data:/data
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw  # X11 socket for GUI access
+    
+    # 网络模式（如果需要访问主机的 X11）
+    network_mode: host
+    
+    # 设备访问（如果需要）
+    # devices:
+    #   - /dev/input:/dev/input
+    
+    # 特权模式（如果需要系统级监控）
+    # privileged: true
+    
+    # 用户设置
+    user: "1000:1000"
+    
+    # 工作目录
+    working_dir: /data
+    
+    # 默认命令
+    command: ["timetracker", "start", "--daemon"]
+    
+    # 健康检查
+    healthcheck:
+      test: ["CMD", "timetracker", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # 可选：Web 界面服务（如果将来添加）
+  # timetracker-web:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.web
+  #   image: timetracker-web:latest
+  #   container_name: timetracker-web
+  #   restart: unless-stopped
+  #   ports:
+  #     - "8080:8080"
+  #   depends_on:
+  #     - timetracker
+  #   environment:
+  #     - TIMETRACKER_API_URL=http://timetracker:8081
+
+volumes:
+  timetracker_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${PWD}/data
+
+networks:
+  default:
+    name: timetracker_network

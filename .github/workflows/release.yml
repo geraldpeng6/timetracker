@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., v1.0.0)'
+        required: true
+        type: string
 
 env:
   CARGO_TERM_COLOR: always
@@ -15,135 +20,356 @@ jobs:
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
       release_id: ${{ steps.create_release.outputs.id }}
+      tag_name: ${{ steps.get_tag.outputs.tag_name }}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Get tag name
+        id: get_tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag_name=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "tag_name=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          if [ -f CHANGELOG.md ]; then
+            # Extract changelog for this version
+            awk '/^## \[/ { if (found) exit; if ($0 ~ /\[${{ steps.get_tag.outputs.tag_name }}\]/ || $0 ~ /\[Unreleased\]/) found=1; next } found' CHANGELOG.md > release_notes.md
+            echo "changelog_file=release_notes.md" >> $GITHUB_OUTPUT
+          else
+            echo "No changelog found" > release_notes.md
+            echo "changelog_file=release_notes.md" >> $GITHUB_OUTPUT
+          fi
+
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_tag.outputs.tag_name }}
+          name: TimeTracker ${{ steps.get_tag.outputs.tag_name }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: ${{ contains(steps.get_tag.outputs.tag_name, 'alpha') || contains(steps.get_tag.outputs.tag_name, 'beta') || contains(steps.get_tag.outputs.tag_name, 'rc') }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          draft: false
-          prerelease: false
 
-  build:
+  build-binaries:
     needs: create-release
     strategy:
+      fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             artifact_name: timetracker
             asset_name: timetracker-linux-x86_64
+            cross: false
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
             artifact_name: timetracker
             asset_name: timetracker-linux-aarch64
+            cross: true
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             artifact_name: timetracker.exe
             asset_name: timetracker-windows-x86_64.exe
+            cross: false
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            artifact_name: timetracker.exe
+            asset_name: timetracker-windows-aarch64.exe
+            cross: true
           - os: macos-latest
             target: x86_64-apple-darwin
             artifact_name: timetracker
             asset_name: timetracker-macos-x86_64
+            cross: false
           - os: macos-latest
             target: aarch64-apple-darwin
             artifact_name: timetracker
             asset_name: timetracker-macos-aarch64
+            cross: false
 
     runs-on: ${{ matrix.os }}
+    name: Build ${{ matrix.target }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          target: ${{ matrix.target }}
-          override: true
+          targets: ${{ matrix.target }}
 
-      - name: Install cross-compilation tools (Linux)
-        if: matrix.os == 'ubuntu-latest' && matrix.target == 'aarch64-unknown-linux-gnu'
+      - name: Install system dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
         run: |
           sudo apt-get update
+          sudo apt-get install -y libx11-dev libxcb1-dev libxcb-randr0-dev libxcb-xtest0-dev libxcb-xinerama0-dev libxcb-shape0-dev libxcb-xkb-dev
+
+      - name: Install cross-compilation tools (Linux ARM64)
+        if: matrix.os == 'ubuntu-latest' && matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
           sudo apt-get install -y gcc-aarch64-linux-gnu
 
+      - name: Install cross
+        if: matrix.cross
+        run: cargo install cross --git https://github.com/cross-rs/cross
+
       - name: Cache cargo registry
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cargo/registry
           key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Cache cargo index
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.cargo/git
           key: ${{ runner.os }}-cargo-index-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Cache cargo build
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: target
-          key: ${{ runner.os }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-build-target-${{ hashFiles('**/Cargo.lock') }}
 
-      - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --target ${{ matrix.target }}
+      - name: Build with cross
+        if: matrix.cross
+        run: cross build --release --target ${{ matrix.target }}
+
+      - name: Build native
+        if: ${{ !matrix.cross }}
+        run: cargo build --release --target ${{ matrix.target }}
         env:
           CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
 
       - name: Strip binary (Unix)
         if: matrix.os != 'windows-latest'
-        run: strip target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+        run: |
+          if command -v strip >/dev/null 2>&1; then
+            strip target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
+          fi
+
+      - name: Create archive
+        id: archive
+        run: |
+          mkdir -p dist
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} dist/
+            cd dist
+            7z a ../${{ matrix.asset_name }}.zip ${{ matrix.artifact_name }}
+            echo "archive_name=${{ matrix.asset_name }}.zip" >> $GITHUB_OUTPUT
+            echo "archive_path=${{ matrix.asset_name }}.zip" >> $GITHUB_OUTPUT
+          else
+            cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} dist/
+            cd dist
+            tar czf ../${{ matrix.asset_name }}.tar.gz ${{ matrix.artifact_name }}
+            echo "archive_name=${{ matrix.asset_name }}.tar.gz" >> $GITHUB_OUTPUT
+            echo "archive_path=${{ matrix.asset_name }}.tar.gz" >> $GITHUB_OUTPUT
+          fi
 
       - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.create-release.outputs.tag_name }}
+          files: ${{ steps.archive.outputs.archive_path }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: target/${{ matrix.target }}/release/${{ matrix.artifact_name }}
-          asset_name: ${{ matrix.asset_name }}
-          asset_content_type: application/octet-stream
 
   build-packages:
     needs: create-release
     runs-on: ubuntu-latest
+    name: Build packages
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
+        uses: dtolnay/rust-toolchain@stable
 
-      - name: Install cargo-deb
-        run: cargo install cargo-deb
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxcb1-dev libxcb-randr0-dev libxcb-xtest0-dev libxcb-xinerama0-dev libxcb-shape0-dev libxcb-xkb-dev
+
+      - name: Install packaging tools
+        run: |
+          cargo install cargo-deb
+          cargo install cargo-generate-rpm
 
       - name: Build DEB package
         run: cargo deb
 
-      - name: Find DEB file
-        id: find_deb
+      - name: Build RPM package
+        run: cargo generate-rpm
+
+      - name: Find packages
+        id: find_packages
         run: |
           DEB_FILE=$(find target/debian -name "*.deb" | head -1)
+          RPM_FILE=$(find target/generate-rpm -name "*.rpm" | head -1)
           echo "deb_file=$DEB_FILE" >> $GITHUB_OUTPUT
           echo "deb_name=$(basename $DEB_FILE)" >> $GITHUB_OUTPUT
+          echo "rpm_file=$RPM_FILE" >> $GITHUB_OUTPUT
+          echo "rpm_name=$(basename $RPM_FILE)" >> $GITHUB_OUTPUT
 
-      - name: Upload DEB package
-        uses: actions/upload-release-asset@v1
+      - name: Upload packages
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.create-release.outputs.tag_name }}
+          files: |
+            ${{ steps.find_packages.outputs.deb_file }}
+            ${{ steps.find_packages.outputs.rpm_file }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  build-installers:
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            installer_type: msi
+          - os: macos-latest
+            installer_type: pkg
+    runs-on: ${{ matrix.os }}
+    name: Build ${{ matrix.installer_type }} installer
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install system dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxcb1-dev
+
+      - name: Build release binary
+        run: cargo build --release
+
+      - name: Install WiX (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip" -OutFile "wix.zip"
+          Expand-Archive -Path "wix.zip" -DestinationPath "wix"
+          echo "$PWD\wix" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Create Windows installer
+        if: matrix.os == 'windows-latest'
+        run: |
+          # Create WiX configuration
+          @"
+          <?xml version="1.0" encoding="UTF-8"?>
+          <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+            <Product Id="*" Name="TimeTracker" Language="1033" Version="1.0.0" Manufacturer="TimeTracker Team" UpgradeCode="12345678-1234-1234-1234-123456789012">
+              <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" />
+              <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+              <MediaTemplate EmbedCab="yes" />
+              <Feature Id="ProductFeature" Title="TimeTracker" Level="1">
+                <ComponentGroupRef Id="ProductComponents" />
+              </Feature>
+              <Directory Id="TARGETDIR" Name="SourceDir">
+                <Directory Id="ProgramFilesFolder">
+                  <Directory Id="INSTALLFOLDER" Name="TimeTracker" />
+                </Directory>
+              </Directory>
+              <ComponentGroup Id="ProductComponents" Directory="INSTALLFOLDER">
+                <Component Id="ProductComponent">
+                  <File Id="TimeTrackerExe" Source="target\release\timetracker.exe" KeyPath="yes" />
+                </Component>
+              </ComponentGroup>
+            </Product>
+          </Wix>
+          "@ | Out-File -FilePath "timetracker.wxs" -Encoding utf8
+
+          candle timetracker.wxs
+          light timetracker.wixobj -out timetracker.msi
+
+      - name: Create macOS installer
+        if: matrix.os == 'macos-latest'
+        run: |
+          mkdir -p pkg/usr/local/bin
+          cp target/release/timetracker pkg/usr/local/bin/
+          pkgbuild --root pkg --identifier com.timetracker.timetracker --version 1.0.0 timetracker.pkg
+
+      - name: Upload installer
+        uses: softprops/action-gh-release@v1
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ${{ steps.find_deb.outputs.deb_file }}
-          asset_name: ${{ steps.find_deb.outputs.deb_name }}
-          asset_content_type: application/vnd.debian.binary-package
+          tag_name: ${{ needs.create-release.outputs.tag_name }}
+          files: |
+            timetracker.${{ matrix.installer_type }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-homebrew:
+    needs: [create-release, build-binaries]
+    runs-on: ubuntu-latest
+    name: Update Homebrew formula
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update Homebrew formula
+        run: |
+          # 这里可以添加自动更新 Homebrew formula 的逻辑
+          echo "Homebrew formula update would go here"
+          # 实际实现需要计算 SHA256 并更新 formula
+
+  update-install-scripts:
+    needs: [create-release, build-binaries]
+    runs-on: ubuntu-latest
+    name: Update install scripts
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update version in install scripts
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          sed -i "s/VERSION=\".*\"/VERSION=\"$VERSION\"/" install-remote.sh
+          sed -i "s/\$Version = \".*\"/\$Version = \"$VERSION\"/" install.ps1
+          echo "Updated install scripts to version $VERSION"
+
+      - name: Create PR for install script updates
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: update install scripts to version ${{ needs.create-release.outputs.tag_name }}"
+          title: "Update install scripts to ${{ needs.create-release.outputs.tag_name }}"
+          body: |
+            Automatically generated PR to update install scripts after release.
+
+            Changes:
+            - Updated version in install-remote.sh
+            - Updated version in install.ps1
+          branch: update-install-scripts-${{ needs.create-release.outputs.tag_name }}
+
+  notify-release:
+    needs: [create-release, build-binaries, build-packages, build-installers]
+    runs-on: ubuntu-latest
+    name: Notify release completion
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Send notification
+        run: |
+          echo "🎉 Release ${{ needs.create-release.outputs.tag_name }} completed successfully!"
+          echo "📦 Artifacts built:"
+          echo "  - Linux x86_64/ARM64 binaries"
+          echo "  - macOS x86_64/ARM64 binaries"
+          echo "  - Windows x86_64/ARM64 binaries"
+          echo "  - DEB package"
+          echo "  - RPM package"
+          echo "  - Windows MSI installer"
+          echo "  - macOS PKG installer"

@@ -1,4 +1,5 @@
-use crate::ai_config::{AIConfig, AIModelConfig, AIProvider};
+use crate::ai::client::{AIMessage, AIRequest, UnifiedAIClient};
+use crate::ai::config::{AIConfig, AIModelConfig, AIProvider};
 use anyhow::Result;
 use std::io::{self, Write};
 
@@ -460,11 +461,11 @@ impl AIConfigManager {
         }
 
         // 创建测试客户端
-        let client = crate::ai_client::UnifiedAIClient::new(self.config.clone())?;
+        let client = UnifiedAIClient::new(self.config.clone())?;
 
         // 发送测试请求
-        let test_request = crate::ai_client::AIRequest {
-            messages: vec![crate::ai_client::AIMessage {
+        let request = AIRequest {
+            messages: vec![AIMessage {
                 role: "user".to_string(),
                 content: "请回复'测试成功'".to_string(),
             }],
@@ -473,7 +474,7 @@ impl AIConfigManager {
             stream: Some(false),
         };
 
-        match client.chat(test_request).await {
+        match client.chat(request).await {
             Ok(response) => {
                 println!("✓ 测试成功!");
                 println!("响应内容: {}", response.content);
@@ -498,9 +499,43 @@ impl AIConfigManager {
         self.config.save()
     }
 
+    /// 保存配置（公共接口）
+    pub fn save(&self) -> Result<()> {
+        self.save_config()
+    }
+
     /// 获取配置
     #[allow(dead_code)]
     pub fn get_config(&self) -> &AIConfig {
         &self.config
+    }
+
+    /// 获取可变配置引用（用于TUI）
+    pub fn get_config_mut(&mut self) -> &mut AIConfig {
+        &mut self.config
+    }
+
+    /// 设置API密钥（简化接口）
+    pub fn set_api_key(&mut self, provider: AIProvider, key: String) -> Result<()> {
+        self.config.set_api_key(provider, key);
+        self.save_config()
+    }
+
+    /// 设置自定义端点（简化接口）
+    pub fn set_endpoint(&mut self, provider: AIProvider, endpoint: String) -> Result<()> {
+        self.config.set_custom_endpoint(provider, endpoint);
+        self.save_config()
+    }
+
+    /// 设置当前提供商
+    pub fn set_current_provider(&mut self, provider: AIProvider) -> Result<()> {
+        self.config.current_provider = provider;
+        self.save_config()
+    }
+
+    /// 设置当前模型
+    pub fn set_current_model(&mut self, model: String) -> Result<()> {
+        self.config.current_model = model;
+        self.save_config()
     }
 }

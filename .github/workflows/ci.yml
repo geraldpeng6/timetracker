@@ -16,6 +16,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+        rust: [stable]
 
     steps:
       - name: Checkout code
@@ -25,6 +26,12 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+
+      - name: Install system dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libx11-dev libxcb1-dev libxcb-randr0-dev libxcb-xtest0-dev libxcb-xinerama0-dev libxcb-shape0-dev libxcb-xkb-dev
 
       - name: Cache cargo registry
         uses: actions/cache@v4
@@ -51,10 +58,20 @@ jobs:
         run: cargo clippy --all-targets --all-features -- -D warnings
 
       - name: Run tests
-        run: cargo test --verbose
+        run: cargo test --verbose --all
 
-      - name: Build
-        run: cargo build --verbose
+      - name: Test activity detection functionality
+        run: |
+          cargo test --test activity_detection_tests --verbose
+          cargo test --test integration_activity_tests --verbose
+
+      - name: Build release
+        run: cargo build --release --verbose
+
+      - name: Test CLI commands
+        run: |
+          ./target/release/timetracker --help
+          ./target/release/timetracker activity --help
 
   security:
     name: Security audit

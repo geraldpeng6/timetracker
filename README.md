@@ -9,6 +9,7 @@
 
 - 🖥️ **跨平台支持**: Windows、macOS、Linux
 - ⏱️ **实时监控**: 后台守护进程，自动追踪活动窗口
+- 🎯 **智能活跃度检测**: 自动识别用户闲置状态，观看视频时智能记录
 - 📊 **智能分析**: 内置AI分析，深度洞察使用习惯
 - 📈 **可视化界面**: 美观的终端界面，实时统计展示
 - 📁 **数据导出**: 支持JSON、CSV格式导出
@@ -18,18 +19,56 @@
 
 ### 安装
 
+#### 🎯 一键安装（推荐）
+
+**Linux / macOS:**
 ```bash
-# 一键安装脚本
-curl -fsSL https://raw.githubusercontent.com/geraldpeng6/timetracker/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/geraldpeng6/timetracker/main/install-remote.sh | bash
+```
 
-# 或使用 Cargo
-cargo install timetracker
+**Windows (PowerShell):**
+```powershell
+iwr -useb https://raw.githubusercontent.com/geraldpeng6/timetracker/main/install.ps1 | iex
+```
 
-# 或从源码编译
+#### 📦 包管理器安装
+
+**Homebrew (macOS):**
+```bash
+brew tap geraldpeng6/timetracker
+brew install timetracker
+```
+
+**APT (Ubuntu/Debian):**
+```bash
+wget https://github.com/geraldpeng6/timetracker/releases/latest/download/timetracker_0.2.2_amd64.deb
+sudo dpkg -i timetracker_0.2.2_amd64.deb
+```
+
+**RPM (CentOS/RHEL/Fedora):**
+```bash
+wget https://github.com/geraldpeng6/timetracker/releases/latest/download/timetracker-0.2.2-1.x86_64.rpm
+sudo rpm -i timetracker-0.2.2-1.x86_64.rpm
+```
+
+#### 🐳 Docker 部署
+```bash
+docker pull ghcr.io/geraldpeng6/timetracker:latest
+docker run -it --rm ghcr.io/geraldpeng6/timetracker:latest
+```
+
+#### 📥 手动下载
+从 [Releases](https://github.com/geraldpeng6/timetracker/releases) 页面下载预编译二进制文件。
+
+#### 🔧 源码编译
+```bash
 git clone https://github.com/geraldpeng6/timetracker.git
 cd timetracker
 cargo build --release
+sudo cp target/release/timetracker /usr/local/bin/
 ```
+
+> 📖 详细安装指南请参考: [部署文档](docs/DEPLOYMENT.md)
 
 ### 基本使用
 
@@ -42,6 +81,11 @@ timetracker start --daemon
 
 # 查看统计信息
 timetracker stats
+
+# 管理活跃度检测
+timetracker activity status    # 查看活跃度状态
+timetracker activity config    # 查看检测配置
+timetracker activity test      # 测试检测功能
 
 # 停止守护进程
 timetracker stop
@@ -64,6 +108,41 @@ timetracker analyze
 | `export` | 导出数据 |
 | `analyze` | AI分析 |
 | `permissions` | 检查权限 |
+| `activity` | 管理活跃度检测 |
+
+## 🎯 活跃度检测功能
+
+TimeTracker 内置智能活跃度检测功能，可以：
+
+### ✨ 核心特性
+- **智能闲置检测**: 自动识别用户是否处于活跃状态
+- **视频播放识别**: 观看视频时即使闲置也会继续记录
+- **节省存储空间**: 闲置时不记录无意义的窗口活动
+- **跨平台支持**: 支持 macOS、Windows、Linux 的系统级闲置检测
+
+### 🎮 支持的视频场景
+- **视频应用**: VLC, QuickTime Player, IINA, Netflix, YouTube 等
+- **视频网站**: YouTube, Bilibili, Netflix, 爱奇艺, 腾讯视频等
+- **关键词识别**: 自动识别窗口标题中的"播放"、"视频"、"直播"等关键词
+
+### 📊 活跃状态类型
+| 状态 | 图标 | 说明 | 是否记录 |
+|------|------|------|----------|
+| 活跃 | 🟢 | 用户正在使用计算机 | ✅ |
+| 闲置 | 🟡 | 用户已闲置超过设定时间 | ❌ |
+| 观看视频 | 📺 | 正在观看视频内容 | ✅ |
+| 未知 | ❓ | 无法确定状态 | ❌ |
+
+### 🔧 活跃度检测命令
+```bash
+timetracker activity status   # 查看当前活跃度状态
+timetracker activity config   # 查看检测配置
+timetracker activity test     # 测试检测功能
+timetracker activity enable   # 启用活跃度检测
+timetracker activity disable  # 禁用活跃度检测
+```
+
+> 📖 详细文档请参考: [活跃度检测功能说明](docs/ACTIVITY_DETECTION.md)
 
 ## 🔧 配置
 

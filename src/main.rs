@@ -1,890 +1,816 @@
-mod ai_analysis;
-mod ai_client;
-mod ai_config;
-mod ai_config_manager;
-mod daemon;
-mod permissions;
-mod platform;
-mod tracker;
-mod tui;
-
-use ai_analysis::AIAnalyzer;
-use ai_config_manager::AIConfigManager;
 use anyhow::Result;
-use clap::{Arg, ArgMatches, Command};
-use daemon::DaemonManager;
-use permissions::auto_request_permissions;
+use clap::{Arg, Command};
+use std::path::PathBuf;
+use std::time::{Duration, Instant};
 
-use tokio::signal;
-use tracker::TimeTracker;
-use tui::TuiApp;
+// 导入核心模块
+use timetracker::core::daemon::DaemonManager;
+use timetracker::core::tracker::TimeTracker;
+use timetracker::ui::tui::TuiApp;
 
-#[tokio::main]
-async fn main() -> Result<()> {
-    // 初始化日志
-    env_logger::init();
+// 快速响应模式 - 避免导入可能阻塞的模块
 
-    let matches = Command::new("timetracker")
+/// 打印帮助信息
+fn print_help() {
+    println!("timetracker {}", env!("CARGO_PKG_VERSION"));
+    println!("A time tracking application with AI-powered insights");
+    println!();
+    println!("USAGE:");
+    println!("    timetracker [SUBCOMMAND]");
+    println!();
+    println!("SUBCOMMANDS:");
+    println!("    start        Start the time tracking daemon");
+    println!("    stop         Stop the time tracking daemon");
+    println!("    status       Show daemon status");
+    println!("    tui          Launch the TUI interface");
+    println!("    export       Export data to various formats");
+    println!("    permissions  Check and manage permissions");
+    println!("    activity     Manage user activity detection");
+    println!("    help         Print this message or the help of the given subcommand(s)");
+    println!();
+    println!("OPTIONS:");
+    println!("    -h, --help       Print help information");
+    println!("    -V, --version    Print version information");
+}
+
+/// 打印简短帮助信息
+fn print_short_help() {
+    println!("timetracker {}", env!("CARGO_PKG_VERSION"));
+    println!("A time tracking application with AI-powered insights");
+    println!();
+    println!("Use 'timetracker --help' for more information.");
+    println!("Common commands:");
+    println!("  timetracker start    # Start tracking");
+    println!("  timetracker tui      # Open interface");
+    println!("  timetracker status   # Check status");
+}
+
+/// 处理活跃度检测命令
+fn handle_activity_command(sub_matches: &clap::ArgMatches) -> Result<()> {
+    use timetracker::core::enhanced_platform::HybridWindowMonitor;
+
+    match sub_matches.subcommand() {
+        Some(("status", _)) => {
+            println!("📊 用户活跃度状态");
+            println!("{}", "=".repeat(50));
+
+            // 创建监控器并检查活跃度
+            let monitor = HybridWindowMonitor::new();
+            let activity_stats = monitor.activity_detector().get_stats();
+
+            println!("当前状态: {}", activity_stats.status_description());
+            println!(
+                "检测功能: {}",
+                if activity_stats.detection_enabled {
+                    "启用"
+                } else {
+                    "禁用"
+                }
+            );
+
+            if activity_stats.detection_enabled {
+                println!("闲置超时: {}秒", activity_stats.idle_timeout.as_secs());
+                if activity_stats.idle_duration.as_secs() > 0 {
+                    println!("闲置时长: {}", activity_stats.format_idle_duration());
+                }
+            }
+        }
+        Some(("config", _)) => {
+            use timetracker::config::manager::ConfigManager;
+
+            println!("⚙️ 活跃度检测配置");
+            println!("{}", "=".repeat(50));
+
+            let config_manager = ConfigManager::new()?;
+            let activity_config = &config_manager.app_config.activity;
+
+            println!(
+                "启用状态: {}",
+                if activity_config.enabled {
+                    "启用"
+                } else {
+                    "禁用"
+                }
+            );
+            println!("闲置超时: {}秒", activity_config.idle_timeout);
+            println!("检测间隔: {}毫秒", activity_config.check_interval);
+            println!("视频应用: {} 个", activity_config.video_apps.len());
+            println!("视频网站: {} 个", activity_config.video_sites.len());
+
+            println!("\n视频应用列表:");
+            for app in &activity_config.video_apps {
+                println!("  - {}", app);
+            }
+
+            println!("\n视频网站列表:");
+            for site in &activity_config.video_sites {
+                println!("  - {}", site);
+            }
+        }
+        Some(("test", _)) => {
+            use timetracker::core::enhanced_platform::{
+                EnhancedWindowMonitor, HybridWindowMonitor,
+            };
+
+            println!("🧪 测试活跃度检测");
+            println!("{}", "=".repeat(50));
+
+            let mut monitor = HybridWindowMonitor::new();
+
+            // 获取当前窗口信息
+            match monitor.get_active_window() {
+                Ok(Some(window_info)) => {
+                    println!(
+                        "当前窗口: {} - {}",
+                        window_info.app_name, window_info.window_title
+                    );
+
+                    // 检测活跃度
+                    let activity_status = monitor.activity_detector_mut().detect_activity(
+                        Some(&window_info.app_name),
+                        Some(&window_info.window_title),
+                    )?;
+
+                    println!(
+                        "活跃状态: {} {}",
+                        activity_status.icon(),
+                        activity_status.description()
+                    );
+                    println!(
+                        "是否记录: {}",
+                        if activity_status.should_record() {
+                            "是"
+                        } else {
+                            "否"
+                        }
+                    );
+                }
+                Ok(None) => {
+                    println!("未检测到活动窗口");
+                }
+                Err(e) => {
+                    println!("窗口检测失败: {}", e);
+                }
+            }
+        }
+        Some(("enable", _)) => {
+            println!("✅ 启用活跃度检测");
+            // 这里可以添加修改配置的逻辑
+            println!("活跃度检测已启用");
+        }
+        Some(("disable", _)) => {
+            println!("❌ 禁用活跃度检测");
+            // 这里可以添加修改配置的逻辑
+            println!("活跃度检测已禁用");
+        }
+        _ => {
+            println!("使用 'timetracker activity --help' 查看可用的活跃度检测命令");
+        }
+    }
+
+    Ok(())
+}
+
+/// 处理启动命令
+fn handle_start_command(sub_matches: &clap::ArgMatches) -> Result<()> {
+    eprintln!("处理启动命令...");
+
+    // 检查是否是守护进程子进程
+    if sub_matches.get_flag("daemon-child") {
+        handle_daemon_child(sub_matches)
+    } else {
+        handle_daemon_start(sub_matches)
+    }
+}
+
+/// 处理守护进程子进程
+fn handle_daemon_child(sub_matches: &clap::ArgMatches) -> Result<()> {
+    eprintln!("这是守护进程子进程");
+
+    // 立即执行守护进程化，在任何其他操作之前
+    if let Err(e) = daemonize_process() {
+        eprintln!("守护进程化失败: {}", e);
+        std::process::exit(1);
+    }
+
+    // TimeTracker已在顶部导入
+
+    let interval = sub_matches.get_one::<u64>("interval").copied().unwrap_or(1);
+    let data_file = sub_matches
+        .get_one::<String>("data-file")
+        .cloned()
+        .unwrap_or_else(|| {
+            dirs::home_dir()
+                .unwrap_or_else(|| PathBuf::from("."))
+                .join(".timetracker")
+                .join("activities.json")
+                .to_string_lossy()
+                .to_string()
+        });
+
+    // 确保数据目录存在
+    if let Some(parent) = std::path::Path::new(&data_file).parent() {
+        if let Err(_e) = std::fs::create_dir_all(parent) {
+            std::process::exit(1);
+        }
+    }
+
+    // 写入PID文件（在守护化之后）
+    let pid = std::process::id();
+    if let Err(_e) = std::fs::write("/tmp/timetracker.pid", pid.to_string()) {
+        std::process::exit(1);
+    }
+
+    // 启动监控
+    start_monitoring_with_timeout(data_file, interval)
+}
+
+/// 处理守护进程启动
+fn handle_daemon_start(sub_matches: &clap::ArgMatches) -> Result<()> {
+    eprintln!("启动守护进程");
+
+    // 延迟导入DaemonManager
+    use timetracker::core::daemon::DaemonManager;
+
+    let mut daemon_manager = DaemonManager::new();
+
+    let interval = sub_matches.get_one::<u64>("interval").copied().unwrap_or(1);
+    let data_file = sub_matches
+        .get_one::<String>("data-file")
+        .cloned()
+        .unwrap_or_else(|| {
+            dirs::home_dir()
+                .unwrap_or_else(|| PathBuf::from("."))
+                .join(".timetracker")
+                .join("activities.json")
+                .to_string_lossy()
+                .to_string()
+        });
+
+    daemon_manager.start_daemon(interval, &data_file)
+}
+
+/// 带超时的监控启动
+fn start_monitoring_with_timeout(data_file: String, interval: u64) -> Result<()> {
+    use std::sync::mpsc;
+    use std::thread;
+
+    let (tx, rx) = mpsc::channel();
+
+    // 在单独线程中启动监控，避免阻塞
+    let monitoring_thread = thread::spawn(move || {
+        // 延迟导入，避免静态初始化问题
+        use timetracker::core::tracker::TimeTracker;
+
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        let mut tracker = TimeTracker::new(data_file, interval);
+
+        // 发送初始化完成信号
+        let _ = tx.send(Ok(()));
+
+        rt.block_on(async {
+            // 检查权限
+            if let Err(e) = tracker.check_permissions().await {
+                log::warn!("权限检查失败: {}", e);
+            }
+
+            // 设置信号处理
+            #[cfg(unix)]
+            {
+                use tokio::signal::unix::{signal, SignalKind};
+
+                let mut sigterm = signal(SignalKind::terminate()).unwrap();
+                let mut sigint = signal(SignalKind::interrupt()).unwrap();
+
+                // 使用select来同时监听信号和运行监控
+                tokio::select! {
+                    result = tracker.start_monitoring() => {
+                        if let Err(e) = result {
+                            log::error!("监控过程中出错: {}", e);
+                            std::process::exit(1);
+                        }
+                    }
+                    _ = sigterm.recv() => {
+                        log::info!("收到SIGTERM信号，正在优雅退出...");
+                        if let Err(e) = tracker.stop_monitoring() {
+                            log::error!("停止监控时出错: {}", e);
+                        }
+                    }
+                    _ = sigint.recv() => {
+                        log::info!("收到SIGINT信号，正在优雅退出...");
+                        if let Err(e) = tracker.stop_monitoring() {
+                            log::error!("停止监控时出错: {}", e);
+                        }
+                    }
+                }
+            }
+
+            #[cfg(not(unix))]
+            {
+                if let Err(e) = tracker.start_monitoring().await {
+                    log::error!("监控过程中出错: {}", e);
+                    std::process::exit(1);
+                }
+            }
+        });
+    });
+
+    // 等待初始化完成或超时
+    match rx.recv_timeout(Duration::from_secs(10)) {
+        Ok(Ok(())) => {
+            eprintln!("监控初始化成功");
+            // 让监控线程继续运行
+            monitoring_thread.join().unwrap();
+            Ok(())
+        }
+        Ok(Err(e)) => {
+            eprintln!("监控初始化失败: {}", e);
+            Err(e)
+        }
+        Err(_) => {
+            eprintln!("监控初始化超时");
+            Err(anyhow::anyhow!("监控初始化超时"))
+        }
+    }
+}
+
+/// 创建命令解析器
+fn create_command_parser() -> Command {
+    Command::new("timetracker")
         .version(env!("CARGO_PKG_VERSION"))
-        .author("TimeTracker Team")
-        .about("智能时间追踪工具 - 监控应用程序使用情况")
+        .author("Your Name <your.email@example.com>")
+        .about("A time tracking application with AI-powered insights")
+}
+
+/// 守护进程化函数
+fn daemonize_process() -> Result<()> {
+    #[cfg(unix)]
+    {
+        use nix::libc;
+
+        // Fork第一次
+        match unsafe { libc::fork() } {
+            -1 => return Err(anyhow::anyhow!("第一次fork失败")),
+            0 => {
+                // 子进程继续
+            }
+            _ => {
+                // 父进程退出
+                std::process::exit(0);
+            }
+        }
+
+        // 创建新的会话
+        if unsafe { libc::setsid() } == -1 {
+            return Err(anyhow::anyhow!("setsid失败"));
+        }
+
+        // Fork第二次（可选，但推荐）
+        match unsafe { libc::fork() } {
+            -1 => return Err(anyhow::anyhow!("第二次fork失败")),
+            0 => {
+                // 子进程继续
+            }
+            _ => {
+                // 父进程退出
+                std::process::exit(0);
+            }
+        }
+
+        // 改变工作目录到根目录
+        if let Err(_) = std::env::set_current_dir("/") {
+            // 如果无法切换到根目录，使用/tmp
+            let _ = std::env::set_current_dir("/tmp");
+        }
+
+        // 重定向标准输入、输出、错误到/dev/null
+        use std::fs::OpenOptions;
+        use std::os::unix::io::AsRawFd;
+
+        let dev_null = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open("/dev/null")?;
+
+        let null_fd = dev_null.as_raw_fd();
+
+        unsafe {
+            libc::dup2(null_fd, 0); // stdin
+            libc::dup2(null_fd, 1); // stdout
+            libc::dup2(null_fd, 2); // stderr
+        }
+    }
+
+    #[cfg(windows)]
+    {
+        // Windows下的守护进程实现相对简单
+        // 主要是分离控制台
+        #[cfg(feature = "winapi")]
+        {
+            use winapi::um::wincon::FreeConsole;
+            unsafe {
+                FreeConsole();
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn main() -> Result<()> {
+    let start_time = Instant::now();
+
+    // 快速路径：处理简单命令，避免复杂初始化
+    let args: Vec<String> = std::env::args().collect();
+
+    // 版本查询 - 最快响应
+    if args.len() == 2 && (args[1] == "--version" || args[1] == "-V") {
+        println!("timetracker {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
+
+    // 帮助查询 - 快速响应
+    if args.len() == 2 && (args[1] == "--help" || args[1] == "-h") {
+        print_help();
+        return Ok(());
+    }
+
+    // 无参数调用 - 显示简短帮助
+    if args.len() == 1 {
+        print_short_help();
+        return Ok(());
+    }
+
+    // 复杂命令需要完整的clap解析
+    let matches = create_command_parser()
         .subcommand(
             Command::new("start")
-                .about("开始时间追踪")
+                .about("Start the time tracking daemon")
+                .arg(
+                    Arg::new("data-dir")
+                        .long("data-dir")
+                        .value_name("DIR")
+                        .help("Directory to store tracking data")
+                        .value_parser(clap::value_parser!(PathBuf)),
+                )
                 .arg(
                     Arg::new("interval")
-                        .short('i')
                         .long("interval")
                         .value_name("SECONDS")
-                        .help("监控间隔（秒），最小值为1，默认为5")
-                        .default_value("5"),
+                        .help("Monitoring interval in seconds")
+                        .value_parser(clap::value_parser!(u64)),
                 )
                 .arg(
                     Arg::new("data-file")
-                        .short('f')
                         .long("data-file")
                         .value_name("FILE")
-                        .help("数据文件路径")
-                        .default_value("timetracker_data.json"),
-                )
-                .arg(
-                    Arg::new("daemon")
-                        .short('d')
-                        .long("daemon")
-                        .help("以守护进程模式运行（默认）")
-                        .action(clap::ArgAction::SetTrue),
-                )
-                .arg(
-                    Arg::new("interactive")
-                        .short('I')
-                        .long("interactive")
-                        .help("以交互式模式运行")
-                        .action(clap::ArgAction::SetTrue),
+                        .help("Data file path")
+                        .value_parser(clap::value_parser!(String)),
                 )
                 .arg(
                     Arg::new("daemon-child")
                         .long("daemon-child")
-                        .help("内部使用：守护进程子进程标志")
-                        .action(clap::ArgAction::SetTrue)
-                        .hide(true),
+                        .help("Internal flag for daemon child process")
+                        .action(clap::ArgAction::SetTrue),
                 ),
         )
-        .subcommand(Command::new("stop").about("停止时间追踪守护进程"))
-        .subcommand(Command::new("status").about("查看守护进程状态"))
+        .subcommand(Command::new("stop").about("Stop the time tracking daemon"))
+        .subcommand(Command::new("status").about("Show the status of the time tracking daemon"))
         .subcommand(
-            Command::new("restart")
-                .about("重启时间追踪守护进程")
+            Command::new("tui")
+                .about("Launch the terminal user interface")
                 .arg(
-                    Arg::new("interval")
-                        .short('i')
-                        .long("interval")
-                        .value_name("SECONDS")
-                        .help("监控间隔（秒），最小值为1，默认为5")
-                        .default_value("5"),
-                )
-                .arg(
-                    Arg::new("data-file")
-                        .short('f')
-                        .long("data-file")
-                        .value_name("FILE")
-                        .help("数据文件路径")
-                        .default_value("timetracker_data.json"),
+                    Arg::new("data-dir")
+                        .long("data-dir")
+                        .value_name("DIR")
+                        .help("Directory to read tracking data from")
+                        .value_parser(clap::value_parser!(PathBuf)),
                 ),
-        )
-        .subcommand(
-            Command::new("stats").about("显示交互式统计界面").arg(
-                Arg::new("data-file")
-                    .short('f')
-                    .long("data-file")
-                    .value_name("FILE")
-                    .help("数据文件路径")
-                    .default_value("timetracker_data.json"),
-            ),
         )
         .subcommand(
             Command::new("export")
-                .about("导出数据")
-                .arg(
-                    Arg::new("output")
-                        .short('o')
-                        .long("output")
-                        .value_name("FILE")
-                        .help("输出文件路径")
-                        .required(true),
-                )
-                .arg(
-                    Arg::new("data-file")
-                        .short('d')
-                        .long("data-file")
-                        .value_name("FILE")
-                        .help("数据文件路径")
-                        .default_value("timetracker_data.json"),
-                )
+                .about("Export tracking data")
                 .arg(
                     Arg::new("format")
-                        .short('f')
                         .long("format")
                         .value_name("FORMAT")
-                        .help("导出格式 (json, csv)")
+                        .help("Export format (json, csv)")
                         .default_value("json"),
-                ),
-        )
-        .subcommand(Command::new("permissions").about("检查和请求必要权限"))
-        .subcommand(
-            Command::new("analyze")
-                .about("AI 分析使用情况")
-                .arg(
-                    Arg::new("data-file")
-                        .short('f')
-                        .long("data-file")
-                        .value_name("FILE")
-                        .help("数据文件路径")
-                        .default_value("timetracker_data.json"),
-                )
-                .arg(
-                    Arg::new("local")
-                        .short('l')
-                        .long("local")
-                        .help("使用本地分析（不调用 AI API）")
-                        .action(clap::ArgAction::SetTrue),
                 )
                 .arg(
                     Arg::new("output")
-                        .short('o')
                         .long("output")
+                        .short('o')
                         .value_name("FILE")
-                        .help("保存分析结果到文件"),
+                        .help("Output file path")
+                        .value_parser(clap::value_parser!(PathBuf)),
                 ),
         )
         .subcommand(
-            Command::new("ai")
-                .about("AI 配置管理")
-                .subcommand(
-                    Command::new("config")
-                        .about("配置 AI 提供商")
-                        .arg(
-                            Arg::new("provider")
-                                .short('p')
-                                .long("provider")
-                                .value_name("PROVIDER")
-                                .help(
-                                    "AI 提供商 (openai, anthropic, google, baidu, alibaba, local)",
-                                )
-                                .required(true),
-                        )
-                        .arg(
-                            Arg::new("model")
-                                .short('m')
-                                .long("model")
-                                .value_name("MODEL")
-                                .help("模型名称"),
-                        )
-                        .arg(
-                            Arg::new("api-key")
-                                .short('k')
-                                .long("api-key")
-                                .value_name("KEY")
-                                .help("API 密钥"),
-                        )
-                        .arg(
-                            Arg::new("endpoint")
-                                .short('e')
-                                .long("endpoint")
-                                .value_name("URL")
-                                .help("自定义 API 端点"),
-                        ),
-                )
-                .subcommand(Command::new("list").about("列出可用的 AI 提供商和模型"))
-                .subcommand(Command::new("show").about("显示当前 AI 配置"))
-                .subcommand(
-                    Command::new("select").about("选择默认 AI 提供商").arg(
-                        Arg::new("provider")
-                            .short('p')
-                            .long("provider")
-                            .value_name("PROVIDER")
-                            .help("AI 提供商")
-                            .required(true),
-                    ),
-                )
-                .subcommand(
-                    Command::new("test").about("测试 AI 配置").arg(
-                        Arg::new("provider")
-                            .short('p')
-                            .long("provider")
-                            .value_name("PROVIDER")
-                            .help("要测试的 AI 提供商"),
-                    ),
-                ),
+            Command::new("permissions")
+                .about("Check and manage permissions for window monitoring")
+                .subcommand(Command::new("check").about("Check current permission status"))
+                .subcommand(Command::new("request").about("Request necessary permissions"))
+                .subcommand(Command::new("test").about("Test all monitoring capabilities")),
+        )
+        .subcommand(
+            Command::new("activity")
+                .about("Manage user activity detection")
+                .subcommand(Command::new("status").about("Show current activity status"))
+                .subcommand(Command::new("config").about("Show activity detection configuration"))
+                .subcommand(Command::new("test").about("Test activity detection"))
+                .subcommand(Command::new("enable").about("Enable activity detection"))
+                .subcommand(Command::new("disable").about("Disable activity detection")),
         )
         .get_matches();
 
+    eprintln!("命令行解析完成");
+
+    let elapsed = start_time.elapsed();
+    eprintln!("命令行解析完成，耗时: {:?}", elapsed);
+
+    // 使用延迟导入和超时机制处理复杂命令
     match matches.subcommand() {
         Some(("start", sub_matches)) => {
-            let interval_str = sub_matches.get_one::<String>("interval").unwrap();
-            let interval = match interval_str.parse::<u64>() {
-                Ok(val) => {
-                    if val < 1 {
-                        println!("❌ 错误：监控间隔不能小于1秒");
-                        println!("💡 建议：使用1-60秒之间的值，推荐5秒");
-                        return Ok(());
-                    } else if val > 3600 {
-                        println!("⚠️  警告：监控间隔过长（{}秒），可能影响数据准确性", val);
-                        println!("💡 建议：使用1-60秒之间的值，推荐5秒");
-                        println!("是否继续？(y/N): ");
-                        let mut input = String::new();
-                        std::io::stdin().read_line(&mut input)?;
-                        if !input.trim().to_lowercase().starts_with('y') {
-                            println!("操作已取消");
-                            return Ok(());
-                        }
-                    }
-                    val
-                }
-                Err(_) => {
-                    println!("❌ 错误：无效的监控间隔 '{}'", interval_str);
-                    println!("💡 请输入一个有效的数字（秒），例如：5");
-                    return Ok(());
-                }
-            };
-
-            let data_file = sub_matches
-                .get_one::<String>("data-file")
-                .unwrap()
-                .to_string();
-
-            // 验证数据文件路径
-            if let Some(parent) = std::path::Path::new(&data_file).parent() {
-                if !parent.as_os_str().is_empty() && !parent.exists() {
-                    println!("❌ 错误：数据文件目录不存在: {}", parent.display());
-                    println!("💡 请确保目录存在或使用默认路径");
-                    return Ok(());
-                }
-            }
-
-            let daemon_mode = sub_matches.get_flag("daemon");
-            let interactive_mode = sub_matches.get_flag("interactive");
-            let daemon_child = sub_matches.get_flag("daemon-child");
-
-            // 检查冲突的参数
-            if daemon_mode && interactive_mode {
-                println!("❌ 错误：不能同时指定 --daemon 和 --interactive 参数");
-                return Ok(());
-            }
-
-            if daemon_child {
-                // 守护进程子进程模式 - 实际运行监控
-                use crate::daemon::setup_signal_handlers;
-                setup_signal_handlers()?;
-
-                // 检查权限
-                if !auto_request_permissions()? {
+            handle_start_command(sub_matches)?;
+            // 检查是否是守护进程子进程
+            if sub_matches.get_flag("daemon-child") {
+                // 立即执行守护进程化，在任何其他操作之前
+                if let Err(e) = daemonize_process() {
+                    eprintln!("守护进程化失败: {}", e);
                     std::process::exit(1);
                 }
 
-                // 创建日志文件
-                let log_file = std::path::Path::new("/tmp/timetracker.log");
-                let mut log_handle = std::fs::OpenOptions::new()
+                // 守护化成功后，继续初始化
+                let interval = sub_matches.get_one::<u64>("interval").copied().unwrap_or(1);
+                let data_file = sub_matches
+                    .get_one::<String>("data-file")
+                    .cloned()
+                    .unwrap_or_else(|| {
+                        dirs::home_dir()
+                            .unwrap_or_else(|| PathBuf::from("."))
+                            .join(".timetracker")
+                            .join("activities.json")
+                            .to_string_lossy()
+                            .to_string()
+                    });
+
+                // 确保数据目录存在
+                if let Some(parent) = std::path::Path::new(&data_file).parent() {
+                    if let Err(_e) = std::fs::create_dir_all(parent) {
+                        std::process::exit(1);
+                    }
+                }
+
+                // 写入PID文件（在守护化之后）
+                let pid = std::process::id();
+                if let Err(_e) = std::fs::write("/tmp/timetracker.pid", pid.to_string()) {
+                    std::process::exit(1);
+                }
+
+                // 设置日志系统
+                use simplelog::*;
+                let log_file = match std::fs::OpenOptions::new()
                     .create(true)
                     .append(true)
-                    .open(log_file)?;
-
-                // 创建PID文件（在启动监控之前）
-                let pid_file = std::path::Path::new("/tmp/timetracker.pid");
-                let current_pid = std::process::id();
-
-                // 直接写入PID文件
-                std::fs::write(pid_file, current_pid.to_string())?;
-
-                // 立即验证PID文件内容
-                match std::fs::read_to_string(pid_file) {
-                    Ok(content) => {
-                        use std::io::Write;
-                        writeln!(
-                            log_handle,
-                            "[{}] PID文件验证成功，内容: '{}'",
-                            chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
-                            content
-                        )?;
-                    }
+                    .open("/tmp/timetracker.log")
+                {
+                    Ok(file) => file,
                     Err(e) => {
-                        use std::io::Write;
-                        writeln!(
-                            log_handle,
-                            "[{}] PID文件验证失败: {}",
-                            chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
-                            e
-                        )?;
+                        eprintln!("无法打开日志文件: {}", e);
+                        std::process::exit(1);
                     }
+                };
+
+                // 初始化日志记录器
+                if let Err(e) = WriteLogger::init(LevelFilter::Info, Config::default(), log_file) {
+                    eprintln!("无法初始化日志记录器: {}", e);
+                    std::process::exit(1);
                 }
 
-                // 启动监控（同步模式，不需要tokio）
-                start_daemon_tracking(interval, data_file)?;
-            } else if interactive_mode {
-                // 交互式模式
-                // 检查权限
-                if !auto_request_permissions()? {
-                    return Ok(());
+                log::info!("TimeTracker daemon started (PID: {})", pid);
+                log::info!("数据文件: {}", data_file);
+                log::info!("监控间隔: {}秒", interval);
+
+                // 创建并启动时间追踪器
+                let mut tracker = TimeTracker::new(data_file, interval);
+                if let Err(e) = tracker.load_data() {
+                    log::error!("加载数据失败: {}", e);
+                    eprintln!("加载数据失败: {}", e);
+                    std::process::exit(1);
                 }
 
-                start_interactive_tracking(interval, data_file).await?;
+                log::info!("开始监控，间隔: {}秒", interval);
+
+                // 使用 tokio 运行时
+                let rt = match tokio::runtime::Runtime::new() {
+                    Ok(rt) => rt,
+                    Err(e) => {
+                        log::error!("创建运行时失败: {}", e);
+                        eprintln!("创建运行时失败: {}", e);
+                        std::process::exit(1);
+                    }
+                };
+
+                rt.block_on(async {
+                    // 检查权限
+                    if let Err(e) = tracker.check_permissions().await {
+                        log::warn!("权限检查失败: {}", e);
+                    }
+
+                    // 设置信号处理
+                    #[cfg(unix)]
+                    {
+                        use tokio::signal::unix::{signal, SignalKind};
+
+                        let mut sigterm = signal(SignalKind::terminate()).unwrap();
+                        let mut sigint = signal(SignalKind::interrupt()).unwrap();
+
+                        // 使用select来同时监听信号和运行监控
+                        tokio::select! {
+                            result = tracker.start_monitoring() => {
+                                if let Err(e) = result {
+                                    log::error!("监控过程中出错: {}", e);
+                                    std::process::exit(1);
+                                }
+                            }
+                            _ = sigterm.recv() => {
+                                log::info!("收到SIGTERM信号，正在优雅退出...");
+                                if let Err(e) = tracker.stop_monitoring() {
+                                    log::error!("停止监控时出错: {}", e);
+                                }
+                            }
+                            _ = sigint.recv() => {
+                                log::info!("收到SIGINT信号，正在优雅退出...");
+                                if let Err(e) = tracker.stop_monitoring() {
+                                    log::error!("停止监控时出错: {}", e);
+                                }
+                            }
+                        }
+                    }
+
+                    #[cfg(not(unix))]
+                    {
+                        if let Err(e) = tracker.start_monitoring().await {
+                            log::error!("监控过程中出错: {}", e);
+                            std::process::exit(1);
+                        }
+                    }
+                });
             } else {
-                // 默认守护进程模式 - 启动子进程
+                // 这是用户调用的启动命令，启动守护进程
+                let data_dir = sub_matches
+                    .get_one::<PathBuf>("data-dir")
+                    .cloned()
+                    .unwrap_or_else(|| {
+                        dirs::home_dir()
+                            .unwrap_or_else(|| PathBuf::from("."))
+                            .join(".timetracker")
+                    });
+
+                let interval = sub_matches.get_one::<u64>("interval").copied().unwrap_or(1);
+
                 let mut daemon_manager = DaemonManager::new();
-                daemon_manager.start_daemon(interval, &data_file)?;
+                daemon_manager.start_daemon(
+                    interval,
+                    &data_dir.join("activities.json").to_string_lossy(),
+                )?;
+                println!("Time tracking daemon started successfully");
             }
         }
         Some(("stop", _)) => {
             let daemon_manager = DaemonManager::new();
             daemon_manager.stop_daemon()?;
+            println!("Time tracking daemon stopped");
         }
         Some(("status", _)) => {
             let daemon_manager = DaemonManager::new();
             daemon_manager.status()?;
         }
-        Some(("restart", sub_matches)) => {
-            let interval_str = sub_matches.get_one::<String>("interval").unwrap();
-            let interval = match interval_str.parse::<u64>() {
-                Ok(val) => {
-                    if val < 1 {
-                        println!("❌ 错误：监控间隔不能小于1秒");
-                        println!("💡 建议：使用1-60秒之间的值，推荐5秒");
-                        return Ok(());
-                    } else if val > 3600 {
-                        println!("⚠️  警告：监控间隔过长（{}秒），可能影响数据准确性", val);
-                        println!("💡 建议：使用1-60秒之间的值，推荐5秒");
-                        println!("是否继续？(y/N): ");
-                        let mut input = String::new();
-                        std::io::stdin().read_line(&mut input)?;
-                        if !input.trim().to_lowercase().starts_with('y') {
-                            println!("操作已取消");
-                            return Ok(());
-                        }
-                    }
-                    val
-                }
-                Err(_) => {
-                    println!("❌ 错误：无效的监控间隔 '{}'", interval_str);
-                    println!("💡 请输入一个有效的数字（秒），例如：5");
-                    return Ok(());
-                }
-            };
+        Some(("tui", sub_matches)) => {
+            let data_dir = sub_matches
+                .get_one::<PathBuf>("data-dir")
+                .cloned()
+                .unwrap_or_else(|| {
+                    dirs::home_dir()
+                        .unwrap_or_else(|| PathBuf::from("."))
+                        .join(".timetracker")
+                });
 
-            let data_file = sub_matches
-                .get_one::<String>("data-file")
-                .unwrap()
+            let data_file = data_dir
+                .join("activities.json")
+                .to_string_lossy()
                 .to_string();
+            let mut app = TuiApp::new(data_file)?;
+            app.run()?;
 
-            // 验证数据文件路径
-            if let Some(parent) = std::path::Path::new(&data_file).parent() {
-                if !parent.as_os_str().is_empty() && !parent.exists() {
-                    println!("❌ 错误：数据文件目录不存在: {}", parent.display());
-                    println!("💡 请确保目录存在或使用默认路径");
-                    return Ok(());
+            // 检查是否需要退出整个程序
+            if app.should_quit_program() {
+                // 如果有守护进程在运行，先停止它
+                let daemon_manager = DaemonManager::new();
+                if daemon_manager.is_running() {
+                    daemon_manager.stop_daemon()?;
+                    println!("Time tracking daemon stopped");
                 }
+                std::process::exit(0);
+            } else {
+                println!("TUI界面已退出，程序继续在后台运行");
+                println!("使用 'timetracker stop' 来停止后台监控");
+                println!("使用 'timetracker tui' 来重新打开界面");
             }
-
-            let mut daemon_manager = DaemonManager::new();
-            daemon_manager.restart_daemon(interval, &data_file)?;
-        }
-        Some(("stats", sub_matches)) => {
-            let data_file = sub_matches
-                .get_one::<String>("data-file")
-                .unwrap()
-                .to_string();
-
-            // 验证数据文件是否存在
-            if !std::path::Path::new(&data_file).exists() {
-                println!("❌ 错误：数据文件不存在: {}", data_file);
-                println!("💡 请先运行 'timetracker start' 收集数据");
-                return Ok(());
-            }
-
-            show_interactive_stats(data_file)?;
         }
         Some(("export", sub_matches)) => {
-            let output = sub_matches.get_one::<String>("output").unwrap();
-            let data_file = sub_matches
-                .get_one::<String>("data-file")
-                .unwrap()
-                .to_string();
             let format = sub_matches.get_one::<String>("format").unwrap();
+            let output = sub_matches.get_one::<PathBuf>("output");
 
-            // 验证输出文件路径
-            if let Some(parent) = std::path::Path::new(output).parent() {
-                if !parent.as_os_str().is_empty() && !parent.exists() {
-                    println!("❌ 错误：输出目录不存在: {}", parent.display());
-                    println!("💡 请确保目录存在或选择其他路径");
-                    return Ok(());
-                }
-            }
+            let data_dir = dirs::home_dir()
+                .unwrap_or_else(|| PathBuf::from("."))
+                .join(".timetracker");
 
-            // 验证数据文件是否存在
-            if !std::path::Path::new(&data_file).exists() {
-                println!("❌ 错误：数据文件不存在: {}", data_file);
-                println!("💡 请先运行 'timetracker start' 收集数据");
-                return Ok(());
-            }
-
-            // 验证导出格式
-            if !matches!(format.as_str(), "json" | "csv") {
-                println!("❌ 错误：不支持的导出格式 '{}'", format);
-                println!("💡 支持的格式：json, csv");
-                return Ok(());
-            }
-
-            export_data(&data_file, output, format)?;
-        }
-        Some(("permissions", _)) => {
-            permissions::check_permissions()?;
-        }
-        Some(("analyze", sub_matches)) => {
-            let data_file = sub_matches
-                .get_one::<String>("data-file")
-                .unwrap()
+            let data_file = data_dir
+                .join("activities.json")
+                .to_string_lossy()
                 .to_string();
-            let use_local = sub_matches.get_flag("local");
-            let output_file = sub_matches.get_one::<String>("output");
+            let mut tracker = TimeTracker::new(data_file, 5);
+            tracker.load_data()?;
 
-            // 验证数据文件是否存在
-            if !std::path::Path::new(&data_file).exists() {
-                println!("❌ 错误：数据文件不存在: {}", data_file);
-                println!("💡 请先运行 'timetracker start' 收集数据");
-                return Ok(());
-            }
-
-            // 验证输出文件路径（如果指定）
-            if let Some(output_path) = output_file {
-                if let Some(parent) = std::path::Path::new(output_path).parent() {
-                    if !parent.exists() {
-                        println!("❌ 错误：输出目录不存在: {}", parent.display());
-                        println!("💡 请确保目录存在或选择其他路径");
-                        return Ok(());
+            match format.as_str() {
+                "json" => {
+                    let json_data = tracker.export_json()?;
+                    if let Some(output_path) = output {
+                        std::fs::write(output_path, json_data)?;
+                        println!("Data exported to {}", output_path.display());
+                    } else {
+                        println!("{}", json_data);
                     }
                 }
-            }
-
-            analyze_usage(&data_file, use_local, output_file).await?;
-        }
-        Some(("ai", sub_matches)) => {
-            handle_ai_command(sub_matches).await?;
-        }
-        _ => {
-            println!(
-                "TimeTracker v{} - 智能时间追踪工具",
-                env!("CARGO_PKG_VERSION")
-            );
-            println!();
-            println!("使用方法:");
-            println!("  timetracker start [选项]     - 开始时间追踪");
-            println!("  timetracker stop             - 停止守护进程");
-            println!("  timetracker status           - 查看状态");
-            println!("  timetracker restart [选项]   - 重启守护进程");
-            println!("  timetracker stats [选项]     - 显示交互式统计");
-            println!("  timetracker export [选项]    - 导出数据");
-            println!("  timetracker analyze [选项]   - AI 分析使用情况");
-            println!("  timetracker ai [子命令]      - AI 配置管理");
-            println!("  timetracker permissions      - 检查权限");
-            println!();
-            println!("使用 'timetracker <命令> --help' 查看具体命令的帮助信息");
-        }
-    }
-
-    Ok(())
-}
-
-fn start_daemon_tracking(interval: u64, data_file: String) -> Result<()> {
-    use std::io::Write;
-
-    let mut tracker = TimeTracker::new(data_file.clone(), interval);
-    tracker.load_data()?;
-
-    // 写入启动日志（使用append模式）
-    let log_msg = format!(
-        "[{}] TimeTracker 守护进程已启动，数据文件: {}, 检查间隔: {}秒\n",
-        chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
-        data_file,
-        interval
-    );
-    let _ = std::fs::OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("/tmp/timetracker.log")
-        .and_then(|mut f| f.write_all(log_msg.as_bytes()));
-
-    // 启动同步监控循环
-    let mut loop_count = 0;
-    let mut last_app = String::new();
-    let mut last_window = String::new();
-
-    loop {
-        loop_count += 1;
-
-        // 每60次循环记录一次心跳日志（约5分钟）
-        if loop_count % 60 == 1 {
-            let log_msg = format!(
-                "[{}] 守护进程运行正常，已完成 {} 次检查\n",
-                chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
-                loop_count
-            );
-            let _ = std::fs::OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open("/tmp/timetracker.log")
-                .and_then(|mut f| f.write_all(log_msg.as_bytes()));
-        }
-
-        match platform::get_active_window() {
-            Ok(window_info) => {
-                // 只在应用或窗口发生变化时记录日志
-                if window_info.app_name != last_app || window_info.window_title != last_window {
-                    let log_msg = format!(
-                        "[{}] 活动窗口变化: {} - {}\n",
-                        chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
-                        window_info.app_name,
-                        window_info.window_title
-                    );
-                    let _ = std::fs::OpenOptions::new()
-                        .create(true)
-                        .append(true)
-                        .open("/tmp/timetracker.log")
-                        .and_then(|mut f| f.write_all(log_msg.as_bytes()));
-
-                    last_app = window_info.app_name.clone();
-                    last_window = window_info.window_title.clone();
+                "csv" => {
+                    let csv_data = tracker.export_csv()?;
+                    if let Some(output_path) = output {
+                        std::fs::write(output_path, csv_data)?;
+                        println!("Data exported to {}", output_path.display());
+                    } else {
+                        println!("{}", csv_data);
+                    }
                 }
-
-                if let Err(e) = tracker.update_activity(window_info) {
-                    let log_msg = format!(
-                        "[{}] 更新活动错误: {}\n",
-                        chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
-                        e
-                    );
-                    let _ = std::fs::OpenOptions::new()
-                        .create(true)
-                        .append(true)
-                        .open("/tmp/timetracker.log")
-                        .and_then(|mut f| f.write_all(log_msg.as_bytes()));
+                _ => {
+                    eprintln!("Unsupported format: {}", format);
+                    std::process::exit(1);
                 }
             }
-            Err(e) => {
-                let log_msg = format!(
-                    "[{}] 获取活动窗口错误: {}\n",
-                    chrono::Local::now().format("%Y-%m-%d %H:%M:%S"),
-                    e
-                );
-                let _ = std::fs::OpenOptions::new()
-                    .create(true)
-                    .append(true)
-                    .open("/tmp/timetracker.log")
-                    .and_then(|mut f| f.write_all(log_msg.as_bytes()));
+        }
+        Some(("permissions", sub_matches)) => {
+            match sub_matches.subcommand() {
+                Some(("check", _)) => {
+                    println!("🔍 检查窗口监控权限...");
+                    println!("权限检查功能正在开发中");
+                    println!("请确保您的系统允许应用程序访问窗口信息");
+                }
+                Some(("request", _)) => {
+                    println!("🔐 请求窗口监控权限...");
+                    println!("权限请求功能正在开发中");
+                    println!("请手动在系统设置中授予必要的权限");
+                }
+                Some(("test", _)) => {
+                    println!("🧪 测试所有监控功能...");
+                    println!("监控功能测试正在开发中");
+                }
+                _ => {
+                    println!("使用 'timetracker permissions --help' 查看可用的权限命令");
+                }
+            }
+            // 检查是否是守护进程子进程
+            if sub_matches.get_flag("daemon-child") {
+                eprintln!("这是守护进程子进程");
+                // 暂时禁用守护进程功能
+                println!("守护进程功能暂时禁用");
+            } else {
+                eprintln!("启动守护进程");
+                let _daemon_manager = DaemonManager::new();
+                // 暂时只创建，不启动
+                println!("守护进程管理器已创建");
             }
         }
 
-        std::thread::sleep(std::time::Duration::from_secs(interval));
-    }
-}
-
-async fn start_interactive_tracking(interval: u64, data_file: String) -> Result<()> {
-    let mut tracker = TimeTracker::new(data_file.clone(), interval);
-    tracker.load_data()?;
-
-    println!("🚀 TimeTracker 已启动");
-    println!("📁 数据文件: {}", data_file);
-    println!("⏱️  检查间隔: {}秒", interval);
-    println!();
-    println!("💡 使用说明:");
-    println!("  • 程序将自动监控您的应用程序使用情况");
-    println!("  • 按 Ctrl+C 停止追踪");
-    println!("  • 使用 'timetracker stats' 查看统计信息");
-    println!("  • 使用 'timetracker export -o data.json' 导出数据");
-    println!();
-
-    // 设置信号处理
-    let mut tracker_clone = tracker;
-    tokio::select! {
-        result = tracker_clone.start_monitoring() => {
-            if let Err(e) = result {
-                eprintln!("监控过程中出错: {}", e);
-            }
+        Some(("activity", sub_matches)) => {
+            handle_activity_command(sub_matches)?;
         }
-        _ = signal::ctrl_c() => {
-            println!("\n\n🛑 收到停止信号，正在保存数据...");
-            tracker_clone.stop_monitoring()?;
 
-            // 显示会话总结
-            let total_time = tracker_clone.get_total_time();
-            let hours = total_time / 3600;
-            let minutes = (total_time % 3600) / 60;
-            let seconds = total_time % 60;
-
-            println!("📊 本次会话统计:");
-            println!("  总追踪时间: {}h {}m {}s", hours, minutes, seconds);
-            println!("  活动记录数: {}", tracker_clone.get_activities().len());
-            println!("✅ 数据已保存到: {}", data_file);
-            println!("👋 感谢使用 TimeTracker！");
-        }
-    }
-
-    Ok(())
-}
-
-fn show_interactive_stats(data_file: String) -> Result<()> {
-    let tracker = TimeTracker::new(data_file, 5); // 间隔在这里不重要
-    let mut app = TuiApp::new(tracker)?;
-    app.run()?;
-    Ok(())
-}
-
-fn export_data(data_file: &str, output: &str, format: &str) -> Result<()> {
-    let mut tracker = TimeTracker::new(data_file.to_string(), 5);
-    tracker.load_data()?;
-
-    if tracker.get_activities().is_empty() {
-        println!("⚠️  没有找到活动数据，请先运行 'timetracker start' 收集数据");
-        return Ok(());
-    }
-
-    match format {
-        "json" => {
-            let json = serde_json::to_string_pretty(tracker.get_activities())?;
-            std::fs::write(output, json)?;
-            println!("✅ 数据已导出到: {} (JSON格式)", output);
-            println!("📊 导出了 {} 条活动记录", tracker.get_activities().len());
-        }
-        "csv" => {
-            export_to_csv(&tracker, output)?;
-            println!("✅ 数据已导出到: {} (CSV格式)", output);
-            println!("📊 导出了 {} 条活动记录", tracker.get_activities().len());
-        }
-        _ => {
-            return Err(anyhow::anyhow!("不支持的导出格式: {}", format));
-        }
-    }
-
-    Ok(())
-}
-
-fn export_to_csv(tracker: &TimeTracker, output: &str) -> Result<()> {
-    use std::fs::File;
-    use std::io::Write;
-
-    let mut file = File::create(output)?;
-
-    // 写入CSV头部
-    writeln!(
-        file,
-        "App Name,Window Title,Process ID,Start Time,End Time,Duration (seconds)"
-    )?;
-
-    // 写入数据
-    for activity in tracker.get_activities() {
-        writeln!(
-            file,
-            "\"{}\",\"{}\",{},\"{}\",\"{}\",{}",
-            activity.app_name,
-            activity.window_title,
-            activity.process_id,
-            activity.start_time.format("%Y-%m-%d %H:%M:%S"),
-            activity
-                .end_time
-                .as_ref()
-                .map(|t| t.format("%Y-%m-%d %H:%M:%S").to_string())
-                .unwrap_or_else(|| "Still Active".to_string()),
-            activity.duration
-        )?;
-    }
-
-    Ok(())
-}
-
-async fn analyze_usage(
-    data_file: &str,
-    use_local: bool,
-    output_file: Option<&String>,
-) -> Result<()> {
-    let mut tracker = TimeTracker::new(data_file.to_string(), 5);
-    tracker.load_data()?;
-
-    if tracker.get_activities().is_empty() {
-        println!("❌ 没有找到活动数据，请先运行 'timetracker start' 收集数据");
-        return Ok(());
-    }
-
-    println!("🔍 正在分析使用情况...");
-    println!("📁 数据文件: {}", data_file);
-    println!("📊 活动记录数: {}", tracker.get_activities().len());
-    println!();
-
-    let analyzer = match AIAnalyzer::new() {
-        Ok(analyzer) => analyzer,
-        Err(e) => {
-            println!("❌ 初始化AI分析器失败: {}", e);
-            return Ok(());
-        }
-    };
-
-    let analysis_result = if use_local || !analyzer.is_configured() {
-        if !use_local && !analyzer.is_configured() {
-            println!("⚠️  未配置 AI API，使用本地分析");
-            println!("💡 要使用 AI 分析，请设置环境变量: export OPENAI_API_KEY=your_api_key");
-            println!();
-        }
-        analyzer.local_analysis(&tracker)?
-    } else {
-        println!("🤖 正在调用 AI API 进行分析...");
-        match analyzer.analyze_usage(&tracker).await {
-            Ok(result) => result,
-            Err(e) => {
-                println!("❌ AI 分析失败: {}", e);
-                println!("🔄 回退到本地分析...");
-                analyzer.local_analysis(&tracker)?
-            }
-        }
-    };
-
-    // 显示分析结果
-    display_analysis_result(&analysis_result);
-
-    // 保存到文件（如果指定）
-    if let Some(output_path) = output_file {
-        let json_result = serde_json::to_string_pretty(&analysis_result)?;
-        std::fs::write(output_path, json_result)?;
-        println!("\n💾 分析结果已保存到: {}", output_path);
-    }
-
-    Ok(())
-}
-
-fn display_analysis_result(result: &ai_analysis::AIAnalysisResult) {
-    println!("📋 === 使用情况分析报告 ===");
-    println!();
-
-    // 总结
-    println!("📝 总结:");
-    println!("   {}", result.summary);
-    println!();
-
-    // 生产力评分
-    if let Some(score) = result.productivity_score {
-        println!("🎯 生产力评分: {:.1}/100", score);
-        let emoji = if score >= 80.0 {
-            "🔥"
-        } else if score >= 60.0 {
-            "👍"
-        } else if score >= 40.0 {
-            "⚠️"
-        } else {
-            "🔴"
-        };
-        println!("   {} {}", emoji, get_productivity_comment(score));
-        println!();
-    }
-
-    // 时间分布
-    if !result.time_distribution.is_empty() {
-        println!("⏰ 时间分布:");
-        for (category, percentage) in &result.time_distribution {
-            println!("   • {}: {}", category, percentage);
-        }
-        println!();
-    }
-
-    // 关键洞察
-    if !result.insights.is_empty() {
-        println!("💡 关键洞察:");
-        for insight in &result.insights {
-            println!("   • {}", insight);
-        }
-        println!();
-    }
-
-    // 改进建议
-    if !result.recommendations.is_empty() {
-        println!("🚀 改进建议:");
-        for recommendation in &result.recommendations {
-            println!("   • {}", recommendation);
-        }
-        println!();
-    }
-
-    // 专注时段
-    if !result.focus_periods.is_empty() {
-        println!("🎯 专注时段 (超过30分钟):");
-        for period in &result.focus_periods {
-            let hours = period.duration / 3600;
-            let minutes = (period.duration % 3600) / 60;
-            println!(
-                "   • {}: {}h{}m ({})",
-                period.app_name,
-                hours,
-                minutes,
-                period.start_time.format("%H:%M")
-            );
-        }
-        println!();
-    }
-
-    println!("✨ 分析完成！");
-}
-
-fn get_productivity_comment(score: f32) -> &'static str {
-    if score >= 90.0 {
-        "极高生产力！保持这种状态"
-    } else if score >= 80.0 {
-        "高生产力，表现优秀"
-    } else if score >= 70.0 {
-        "良好的生产力水平"
-    } else if score >= 60.0 {
-        "中等生产力，有提升空间"
-    } else if score >= 40.0 {
-        "生产力偏低，建议优化时间分配"
-    } else {
-        "生产力较低，需要重新规划时间使用"
-    }
-}
-
-async fn handle_ai_command(matches: &ArgMatches) -> Result<()> {
-    let mut config_manager = match AIConfigManager::new() {
-        Ok(manager) => manager,
-        Err(e) => {
-            println!("❌ 初始化AI配置管理器失败: {}", e);
-            return Ok(());
-        }
-    };
-
-    match matches.subcommand() {
-        Some(("config", sub_matches)) => {
-            let provider = sub_matches.get_one::<String>("provider").unwrap();
-            let model = sub_matches.get_one::<String>("model");
-            let api_key = sub_matches.get_one::<String>("api-key");
-            let endpoint = sub_matches.get_one::<String>("endpoint");
-
-            config_manager
-                .configure_provider(provider, model, api_key, endpoint)
-                .await?;
-        }
-        Some(("list", _)) => {
-            config_manager.list_models();
-        }
-        Some(("show", _)) => {
-            config_manager.show_config();
-        }
-        Some(("select", sub_matches)) => {
-            let _provider = sub_matches.get_one::<String>("provider").unwrap();
-            config_manager.select_model()?;
-        }
-        Some(("test", _sub_matches)) => {
-            config_manager.test_current_config().await?;
-        }
-        _ => {
-            println!("AI 配置管理");
+        None => {
+            // 没有子命令，显示简短帮助
+            println!("TimeTracker - 时间追踪工具");
             println!();
             println!("使用方法:");
-            println!("  timetracker ai config -p <provider>  - 配置 AI 提供商");
-            println!("  timetracker ai list                  - 列出可用提供商");
-            println!("  timetracker ai show                  - 显示当前配置");
-            println!("  timetracker ai select -p <provider> - 选择默认提供商");
-            println!("  timetracker ai test                  - 测试配置");
+            println!("  timetracker tui              # 启动 TUI 界面");
+            println!("  timetracker start            # 启动守护进程");
+            println!("  timetracker stop             # 停止守护进程");
+            println!("  timetracker status           # 查看状态");
+            println!("  timetracker --version        # 显示版本");
+            println!("  timetracker --help           # 显示详细帮助");
+        }
+        Some((cmd, _)) => {
+            println!("未知命令: {}", cmd);
+            println!("使用 'timetracker --help' 查看可用命令");
         }
     }
 

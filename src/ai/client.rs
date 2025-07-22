@@ -1,4 +1,4 @@
-use crate::ai_config::{AIConfig, AIModelConfig, AIProvider};
+use crate::ai::config::{AIConfig, AIModelConfig, AIProvider};
 use anyhow::{anyhow, Result};
 use reqwest::{
     header::{HeaderMap, HeaderValue, AUTHORIZATION, CONTENT_TYPE},

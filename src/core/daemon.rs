@@ -13,6 +13,12 @@ pub struct DaemonManager {
     should_cleanup: bool,
 }
 
+impl Default for DaemonManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl DaemonManager {
     pub fn new() -> Self {
         Self {
@@ -55,7 +61,7 @@ impl DaemonManager {
         let current_exe = std::env::current_exe()?;
 
         // 启动守护进程，使用 --daemon-child 标志来避免无限递归
-        let child = Command::new(&current_exe)
+        let mut child = Command::new(&current_exe)
             .args([
                 "start",
                 "--interval",
@@ -69,14 +75,27 @@ impl DaemonManager {
             .stdin(Stdio::null())
             .spawn()?;
 
-        let child_pid = child.id();
+        // 等待子进程完成守护化（短暂等待）
+        std::thread::sleep(std::time::Duration::from_millis(500));
 
-        println!("TimeTracker 守护进程已启动 (PID: {})", child_pid);
-        println!("日志文件: {}", self.log_file.display());
-        println!("使用 'timetracker stop' 停止守护进程");
-
-        // 分离子进程，让它独立运行
-        std::mem::forget(child);
+        // 检查子进程是否还在运行（如果守护化成功，原始子进程应该已经退出）
+        match child.try_wait()? {
+            Some(status) => {
+                if status.success() {
+                    // 子进程正常退出，说明守护化成功
+                    println!("TimeTracker 守护进程已启动");
+                    println!("日志文件: {}", self.log_file.display());
+                    println!("使用 'timetracker stop' 停止守护进程");
+                } else {
+                    return Err(anyhow::anyhow!("守护进程启动失败"));
+                }
+            }
+            None => {
+                // 子进程仍在运行，可能守护化失败
+                child.kill()?;
+                return Err(anyhow::anyhow!("守护进程启动超时"));
+            }
+        }
 
         // 设置不要在Drop时清理PID文件
         self.should_cleanup = false;
@@ -203,8 +222,8 @@ impl Drop for DaemonManager {
 
 #[cfg(unix)]
 pub fn setup_signal_handlers() -> Result<()> {
-    // 简化信号处理，避免复杂的 nix 库调用
-    println!("信号处理器已设置（简化模式）");
+    // 信号处理在main.rs中实现
+    log::info!("信号处理器已设置");
     Ok(())
 }
 
